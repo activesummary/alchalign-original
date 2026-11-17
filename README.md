@@ -1,54 +1,47 @@
-# alchAlign — Original AI Platform (Archived Source)
+# alchAlign — Original AI Platform
 
-This repository documents selected source code from the **original alchAlign AI-powered wellness and guidance platform**, developed before its discontinuation and subsequent change in direction. **It is an historical technical archive, not the current alchAlign product and not a ready-to-run application.**
+**An archived look at the AI-powered wellness and personal guidance platform I designed, built, and launched.**
 
-## What the platform did
+The original alchAlign turned customer intake forms into individualized reports and plans. I developed the product experience and the workflows that connected payments, customer access, AI generation, and delivery. This repository preserves selected source code from that version of the platform, which has since been discontinued as alchAlign takes a new direction.
 
-The original platform combined a website and product-specific intake forms with payment and account-access workflows, OpenAI-powered content generation, and report delivery. The included product implementations are:
+## What I built
 
-- **Fathom** — personalized insight generation
-- **Sliproot** — guided pattern reflection
-- **AlignDaily** — personalized fitness and meal-plan generation
-- **Alignment Scan** — personalized alignment report generation
+- **Fathom:** Personalized insight reports
+- **Sliproot:** Guided reflection on recurring patterns
+- **AlignDaily:** Individualized fitness and meal plans
+- **Alignment Scan:** Personalized alignment reports
 
-Additional Pipedream workflows handled Stripe checkout events, account entitlements, claim and redemption logic, and transactional email delivery.
+The supporting system included Stripe checkout, customer entitlements and paid credits, product-specific forms, automated report generation, and transactional email.
 
-## Repository layout
+## How it worked
 
-```text
-frontend/                     Captured WordPress page markup, styles, scripts and sitewide code
-pipedream/workflows/          JavaScript steps separated in original workflow order
-  fathom/
-  sliproot/
-  aligndaily/
-  alignmentscan/
-pipedream/supporting-workflows/   Checkout, entitlement, claims, email, Stripe webhook steps
-docs/                         Architecture and source-mapping notes
-```
+**Typical report-generation flow:**
 
-The frontend files are **original page-code captures** (mostly `.txt`), not standalone HTML applications: some include separate labeled HTML/CSS/JS snippets intended to be placed in a CMS. The `Main Dashboard.rtf` file retains its captured rich-text format. Each separated workflow step is Pipedream component source, **not an independently executable JavaScript program**. Connections, environment variables, external services, Pipedream settings and the WordPress installation are not included.
+`WordPress storefront → Stripe checkout → Pipedream validation & entitlements → gated intake forms → Pipedream generation workflows → OpenAI generation → formatted report → Resend delivery`
 
-## Technical architecture
+The frontend ran on **WordPress** with custom HTML, CSS, and JavaScript. **Pipedream workflows** used JavaScript (Node.js) to process submissions, prepare structured prompts, call **OpenAI APIs**, shape the results, and deliver reports. **Stripe** handled payments, and **Resend** handled transactional email.
 
-The application used **Pipedream / JavaScript (Node.js)** to orchestrate HTTP-triggered workflows, **OpenAI APIs** for generated content, **Stripe** for payment-related events, and **Resend** for transactional email. Product-specific frontend pages handled intake, report display and account interactions. See [architecture notes](docs/ARCHITECTURE.md).
+Some of the implementation challenges included:
 
-## Selected engineering concerns
+- **Protecting paid credits:** Handling failed generation requests so customers did not lose credits when a report wasn't produced.
+- **Improving output consistency:** Iteratively testing and refining prompts against product-specific content, structure, and quality requirements.
+- **Connecting the full customer journey:** Coordinating purchase validation, access, intake, generation, and delivery across services.
 
-- **Transaction and access handling:** payment-confirmation events, access claims and purchased-credit redemption logic
-- **Generation workflow orchestration:** intake, prompt preparation, model requests, response shaping and delivery
-- **Output design:** structured instructions and format constraints intended to improve generated reports
-- **Operational handling:** code paths for errors and timeouts, with customer-facing responses and entitlement/credit-related logic
+## Explore the source
 
-These describe code present in the archive, **not independently verified production performance or an assurance that every output met its intended requirements**.
+- [`frontend/`](frontend/) — Original page-code captures and sitewide scripts
+- [`pipedream/workflows/`](pipedream/workflows/) — Product-generation workflow steps, organized by product
+- [`pipedream/supporting-workflows/`](pipedream/supporting-workflows/) — Checkout, entitlements, credit redemption, webhooks, and email
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Technical architecture and workflow notes
 
-## Development and attribution
+## About this archive
 
-The founder defined the product, requirements, customer experience and workflows, directed implementation and iterative testing, and used AI-assisted coding to develop and troubleshoot code. The repository documents the implementation and the founder’s product ownership.
+I led the product design, requirements, workflow design, implementation, testing, and troubleshooting, using **AI-assisted coding** throughout development.
 
-## Important limitations
+The files document the original system rather than a runnable release. They include Pipedream step code and WordPress page snippets; credentials, service connections, and original endpoints are not included.
 
-- Archived and **not maintained**. Dependencies, APIs and original endpoints may be obsolete.
-- Original Pipedream URLs were replaced with `https://redacted-pipedream-endpoint.invalid` before publication. This version is intentionally not deployable.
-- Secrets, environment variables, customer data, Stripe account configuration and Pipedream connection settings are not supplied.
-- The source has not undergone comprehensive security, clinical-safety, legal or operational verification. It should **not** be used to provide health guidance or accept payments as-is.
+For the project story, see [my alchAlign case study](https://csanders.netlify.app/project).
 
+## License
+
+**All rights reserved.** Source code is provided for review purposes only.
