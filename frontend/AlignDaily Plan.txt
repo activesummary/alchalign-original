@@ -1,0 +1,402 @@
+PAGE: YOUR PLAN (FOR ALIGNDAILY)
+
+
+RAW HTML:
+<div class="align-container"> 
+<div class="align-header">
+  <h2>Your Custom Fitness + Meal Plan</h2>
+  <p>Personalized structure for sustainable wellness</p>
+</div>
+
+  <div id="plan-output" class="plan-output"></div>
+
+
+  <div class="align-controls">
+  <!-- Buttons row (no change except aria attrs on the first button) -->
+<div class="align-buttons">
+  <button id="revealEmailBtn" aria-controls="emailInputRow" aria-expanded="false">Send to Email</button>
+  <button id="dl-ad-pdf">Download PDF</button> 
+</div>
+
+<!-- Email row: add hidden and Cancel button id -->
+<div id="emailInputRow" hidden>
+  <input type="email" id="email" placeholder="Enter your email to receive this plan" autocomplete="email" />
+  <button id="submitEmailBtn" class="submitEmail">Send</button>
+  <button id="cancelEmailBtn" class="submitEmail cancel" type="button">Cancel</button>
+</div>
+
+  <!-- Message appears below -->
+  <p id="emailStatus" style="color: rgb(215, 90, 74);"></p>
+  <p id="pdfStatusBadge" class="pdf-status-badge" style="display:none; margin-top: 8px;"></p>
+</div>
+  
+</div>
+
+
+
+
+RAW JS:
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const planOutput = document.getElementById("plan-output");
+  const product = "aligndaily";
+
+  // ---------- Render plan ----------
+  try {
+    const rawPlan = localStorage.getItem("aligndailyPlan");
+    if (!planOutput) throw new Error("plan-output not found");
+    if (!rawPlan || rawPlan.trim().length < 100) {
+      planOutput.innerHTML = `<p style="text-align:center;color:#999;">No plan found. Please return to the <a href="/aligndaily">form</a> to generate a new one.</p>`;
+    } else {
+      planOutput.innerHTML = `<div class="markdown-plan">${rawPlan}</div>`;
+// Normalize list markers inside the plan (hide by default)
+const planRoot = document.querySelector(".markdown-plan");
+if (planRoot) {
+  planRoot.querySelectorAll("ul:not(.with-bullets), ol:not(.with-bullets)").forEach(list => {
+    list.style.listStyle = "none";
+    list.style.paddingLeft = "0";
+    list.style.marginLeft  = "0";
+    list.querySelectorAll("li").forEach(li => {
+      // extra belt-and-suspenders for Safari quirks
+      li.style.listStyle = "none";
+    });
+  });
+}
+
+    }
+  } catch (e) {
+    console.error(e);
+    planOutput.innerHTML = `<p style="color:#b00020;">Something went wrong displaying your plan.</p>`;
+  }
+
+  // ---------- Elements ----------
+  const revealBtn   = document.getElementById("revealEmailBtn");
+  const inputRow    = document.getElementById("emailInputRow");
+  const submitBtn   = document.getElementById("submitEmailBtn");
+  const cancelBtn   = document.getElementById("cancelEmailBtn");
+  const emailField  = document.getElementById("email");
+  const statusMsg   = document.getElementById("emailStatus");
+  const pdfBtn      = document.getElementById("dl-ad-pdf");
+  const pdfStatusEl = document.getElementById("pdfStatusBadge");
+
+  // ---------- Helpers ----------
+  const isEmail = (v) => /^\S+@\S+\.\S+$/.test(String(v||"").trim());
+  function setEmailStatus(text="", state=""){
+    if (!statusMsg) return;
+    statusMsg.textContent = text;
+    statusMsg.classList.remove("ok","fail","info");
+    if (state) statusMsg.classList.add(state);
+  }
+  function setPdfStatus(text="", state=""){
+    if (!pdfStatusEl) return;
+    pdfStatusEl.textContent = text;
+    pdfStatusEl.style.display = text ? "inline-block" : "none";
+    pdfStatusEl.classList.remove("ok","fail","info");
+    if (state) pdfStatusEl.classList.add(state);
+  }
+
+  // ---------- Open/Close Email Row (button toggles; Esc & Cancel close) ----------
+  let emailOpen = false;
+  function openEmailRow(){
+    emailOpen = true;
+    inputRow.hidden = false;
+    revealBtn.setAttribute("aria-expanded","true");
+    inputRow.scrollIntoView({ behavior:"smooth", block:"center" });
+    setTimeout(() => emailField?.focus({ preventScroll:true }), 200);
+  }
+  function closeEmailRow(clear=false){
+    emailOpen = false;
+    inputRow.hidden = true;
+    revealBtn.setAttribute("aria-expanded","false");
+    if (clear){ if (emailField) emailField.value = ""; setEmailStatus("", ""); }
+  }
+
+  revealBtn?.addEventListener("click", () => { emailOpen ? closeEmailRow() : openEmailRow(); });
+  cancelBtn?.addEventListener("click", () => closeEmailRow(true));
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && emailOpen) closeEmailRow(); });
+
+  // ---------- Submit Email ----------
+  submitBtn?.addEventListener("click", async () => {
+    const email = (emailField?.value || "").trim();
+    const planHTML = document.querySelector(".markdown-plan")?.outerHTML || "";
+    if (!planHTML) { setEmailStatus("Plan content missing.", "fail"); return; }
+    if (!isEmail(email)) { setEmailStatus("Please enter a valid email address.", "fail"); return; }
+
+    const prevLabel = submitBtn.textContent;
+    submitBtn.disabled = true; submitBtn.textContent = "Sending…";
+    setEmailStatus("Sending email…", "info");
+
+    try {
+      const res = await fetch("https://redacted-pipedream-endpoint.invalid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, product, html: planHTML })
+      });
+
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const result = ct.includes("application/json") ? await res.json()
+                  : { success: res.ok, raw: await res.text() };
+
+      if (!result.success) throw new Error(result.raw || "Unknown error");
+
+      closeEmailRow(true);
+      setEmailStatus("✓ Plan sent to your email.", "ok");
+    } catch (err) {
+      console.error("[AlignDaily] Email error:", err);
+      setEmailStatus("❌ Failed to send. Please try again.", "fail");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = prevLabel || "Submit Email";
+    }
+  });
+
+  // ---------- (Optional) PDF handler – keep if you re-enable ----------
+  // pdfBtn?.addEventListener("click", async () => {
+  //   const planEl = document.querySelector(".markdown-plan");
+  //   if (!planEl){ setPdfStatus("❌ No plan found.", "fail"); return; }
+  //   setPdfStatus("Building PDF…", "info");
+  //   // ... your PDF fetch logic here ...
+  // });
+});
+</script>
+
+
+
+RAW JS:
+<script>
+(function(){
+const PRINT_CSS = `
+/* BASE PRINT RULES — apply on desktop & mobile (style tag has media="print") */
+html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+@page { size: Letter; margin: 0.25in; }
+
+/* Hide everything but our wrapper */
+body.aa-printing * { display: none !important; }
+body.aa-printing #aa-print,
+body.aa-printing #aa-print * { display: revert !important; visibility: visible !important; }
+@supports not (display: revert) {
+  body.aa-printing #aa-print,
+  body.aa-printing #aa-print * { display: initial !important; }
+}
+
+/* Desktop/tablet-desktop: exact Letter width with inner padding margins */
+body.aa-printing #aa-print{
+  position: static !important;
+  width: 7.75in !important;          /* was 8.5in */
+  max-width: 7.75in !important;
+  margin: 0 auto !important;
+  padding: 0.25in !important;        /* inner padding to match @page margin */
+  box-sizing: border-box !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+/* MOBILE override: flexible width to avoid right-side clipping */
+@media (max-device-width: 1024px) {
+  body.aa-printing #aa-print{
+    width: 100% !important; max-width: 100% !important;
+    padding-left: 0.5in !important; padding-right: 0.5in !important;
+    padding-top: 0.5in !important; padding-bottom: 0.5in !important;
+  }
+}
+
+/* Sanity resets inside wrapper */
+body.aa-printing #aa-print *,
+body.aa-printing #aa-print *::before,
+body.aa-printing #aa-print *::after{
+  box-sizing: border-box !important;
+  transform: none !important; contain: none !important; max-height: none !important; overflow: visible !important;
+}
+body.aa-printing #aa-print [style*="position:fixed"],
+body.aa-printing #aa-print [style*="position:sticky"]{ position: static !important; }
+
+/* Kill theme/container paddings that push content */
+body.aa-printing #aa-print .vc_row,
+body.aa-printing #aa-print .container,
+body.aa-printing #aa-print [class*="container"],
+body.aa-printing #aa-print [class*="vc_row"]{
+  width:100% !important; max-width:100% !important;
+  margin-left:0 !important; margin-right:0 !important;
+  padding-left:0 !important; padding-right:0 !important;
+}
+
+/* Normalize viewport-based widths that can overflow in print */
+body.aa-printing #aa-print [style*="100vw"],
+body.aa-printing #aa-print [style*="99vw"],
+body.aa-printing #aa-print [style*="calc(100vw"]{
+  width: 100% !important; max-width: 100% !important; left: 0 !important; right: 0 !important;
+}
+
+/* Media should never overflow the printable width */
+body.aa-printing #aa-print img,
+body.aa-printing #aa-print svg,
+body.aa-printing #aa-print canvas,
+body.aa-printing #aa-print video{ max-width:100% !important; height:auto !important; }
+
+/* Minor niceties */
+body.aa-printing #aa-print > *:first-child { margin-top: 0 !important; }
+body.aa-printing #aa-print .day-block,
+body.aa-printing #aa-print .workout-block,
+body.aa-printing #aa-print .meal-block,
+body.aa-printing #aa-print .sliproot-section,
+body.aa-printing #aa-print .report-container { break-inside:auto !important; page-break-inside:auto !important; }
+body.aa-printing #aa-print figure,
+body.aa-printing #aa-print .card-header,
+body.aa-printing #aa-print .align-header { break-inside:avoid; page-break-inside:avoid; }
+
+/* Headings sometimes appear off-center after containers are neutralized */
+body.aa-printing #aa-print h1,
+body.aa-printing #aa-print h2,
+body.aa-printing #aa-print h3,
+body.aa-printing #aa-print h4{
+  margin-left:0 !important; margin-right:0 !important;
+}
+
+/* --- Avoid bad breaks in reasonably small blocks --- */
+/* Keep this only for things you know fit comfortably on a page */
+body.aa-printing #aa-print .card,
+body.aa-printing #aa-print figure {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Keep headings with the content that follows */
+body.aa-printing #aa-print h1,
+body.aa-printing #aa-print h2,
+body.aa-printing #aa-print h3,
+body.aa-printing #aa-print .section-title {
+  break-after: avoid-page;
+  page-break-after: avoid;
+}
+
+/* Let paragraphs and list items break normally on iOS Safari.
+   Forcing page-break-inside: avoid on long text tends to truncate after page 1. */
+/* (No special break rules for p / li here) */
+
+
+/* Tables: keep rows together; repeat header on new page (where supported) */
+body.aa-printing #aa-print table { page-break-inside:auto; }
+body.aa-printing #aa-print tr    { break-inside:avoid; page-break-inside:avoid; }
+body.aa-printing #aa-print thead { display: table-header-group; }
+body.aa-printing #aa-print tfoot { display: table-footer-group; }
+
+/* Print-only utilities */
+body.aa-printing #aa-print .avoid-break { break-inside:avoid; page-break-inside:avoid; }
+body.aa-printing #aa-print .keep-with-next { break-after:avoid-page; page-break-after:avoid; }
+body.aa-printing #aa-print .keep-with-prev { break-before:avoid-page; page-break-before:avoid; }
+body.aa-printing #aa-print .force-break   { break-before:page; page-break-before:always; }
+
+/* Prefer keeping short paragraphs / list items together */
+body.aa-printing #aa-print p,
+body.aa-printing #aa-print li {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Ask the engine to avoid tiny widows/orphans (some engines honor this) */
+body.aa-printing #aa-print p,
+body.aa-printing #aa-print li {
+  widows: 2;
+  orphans: 2;
+}
+
+/* Hyphenation choice (pick one): 
+   - 'auto' reduces awkward line wraps (can help keep sentences together)
+   - 'none' avoids word splits but may increase wrapping */
+body.aa-printing #aa-print { hyphens: auto; }
+
+`;
+
+/**
+ * Wire a print/export button.
+ * @param {string} buttonSelector - CSS selector for the print button
+ * @param {Object} cfg - configuration
+ * @param {string} cfg.root - selector for main content to export
+ * @param {string|null} cfg.header - optional selector for a header to prepend
+ * @param {string} cfg.title - logical export title (unused by window.print but reserved)
+ * @param {string|null} cfg.extras - optional selector for extra nodes to append
+ */
+function wirePrint(buttonSelector, cfg){
+  const btn = document.querySelector(buttonSelector);
+  if (!btn) return;
+
+  const {
+    root,
+    header = null,
+    title = "Export",
+    extras = null
+  } = cfg || {};
+
+  btn.addEventListener("click", () => {
+    const rootEl   = document.querySelector(root);
+    const headerEl = header ? document.querySelector(header) : null;
+    if (!rootEl){ alert("Nothing to export."); return; }
+
+    // build wrapper
+    const wrap = document.createElement("div");
+    wrap.id = "aa-print";
+
+    // header (optional)
+    if (headerEl && !rootEl.contains(headerEl)) {
+      wrap.appendChild(headerEl.cloneNode(true));
+    }
+
+    // main content
+    wrap.appendChild(rootEl.cloneNode(true));
+
+    // extras (e.g., Flowproofing + Disclaimer that live outside .markdown-plan)
+    if (extras) {
+      const extraNodes = document.querySelectorAll(extras);
+      extraNodes.forEach(sec => {
+        // Only append if the original root does *not* already contain it
+        if (!rootEl.contains(sec)) {
+          wrap.appendChild(sec.cloneNode(true));
+        }
+      });
+    }
+
+    // clean up things we never want in print
+    wrap.querySelectorAll(
+      '.sr-loading, #sliproot-loading, [data-aa-pdf="exclude"], .no-print, script, link[rel="preload"]'
+    ).forEach(n => n.remove());
+
+    // inject PRINT CSS only for this print session
+    const style = document.createElement("style");
+    style.id = "aa-print-temp-style";
+    style.setAttribute("media","print");
+    style.textContent = PRINT_CSS;
+
+    // lock out multi-taps
+    btn.disabled = true;
+    btn.classList.add("pulsing");
+    document.head.appendChild(style);
+    document.body.appendChild(wrap);
+    document.body.classList.add("aa-printing");
+
+    const cleanup = () => {
+      document.body.classList.remove("aa-printing");
+      wrap.remove();
+      style.remove();            // remove print CSS so it can’t affect screen
+      btn.disabled = false;
+      btn.classList.remove("pulsing");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup, { once: true });
+
+    try { window.print(); }
+    finally { setTimeout(cleanup, 1200); } // iOS/Safari fallback
+  });
+}
+
+  // Wire each product
+  wirePrint("#dl-sliproot-pdf", { root: ".sliproot-card",          title: "Sliproot_Insight" });
+  wirePrint("#dl-fathom-pdf",   { root: ".fathom-output-card",     title: "Fathom_Insight" });
+  wirePrint("#dl-ad-pdf",       {
+    root:   ".markdown-plan, #markdown-plan",
+    header: ".align-header",
+    title:  "AlignDaily_Plan",
+    extras: ".flowproofing, .disclaimer-block"   // <--- include tail sections for AlignDaily
+  });
+  wirePrint("#dl-as-pdf",       { root: ".report-container",       title: "Alignment_Guide" });
+})();
+</script>

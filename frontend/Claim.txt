@@ -1,0 +1,116 @@
+PAGE: CLAIM
+
+
+RAW HTML:
+<!-- /claim -->
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+
+<div class="claim-page">
+  <div class="wrap">
+    <div class="panel">
+      <h1 class="title">Claim your access</h1>
+      <p id="claimStatus" class="muted">Checking your link…</p>
+
+      <div id="claimActions" class="row" style="display:none">
+        <button id="toPortal" class="btn primary">Go to portal</button>
+        <button id="backTools" class="btn">Back to Tools</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+RAW JS:
+<script>
+(function(){
+  const CLAIM_URL = "https://redacted-pipedream-endpoint.invalid?action=claim";
+
+  // helpers
+  if (typeof window.aaGetToken !== "function") {
+    window.aaGetToken = function(){
+      return localStorage.getItem("aa_session") ||
+             (document.cookie.match(/(?:^|;\\s*)aa_session=([^;]+)/)||[])[1] || null;
+    };
+  }
+  const $ = (id)=>document.getElementById(id);
+  const status   = $("claimStatus");
+  const actions  = $("claimActions");
+  const toPortal = $("toPortal");
+  const backTools= $("backTools");
+
+  const qs     = new URLSearchParams(location.search);
+  const token  = qs.get("token") || "";
+  const reason = (qs.get("reason") || "").toLowerCase(); // optional: expired|invalid
+
+  function showActions(msg, isError){
+    status.classList.toggle("err", !!isError);
+    status.innerHTML = msg;       // allow <strong>
+    actions.style.display = "flex";
+  }
+
+  // button targets
+  toPortal.onclick  = () => location.assign("/portal");
+  backTools.onclick = () => location.assign("/tools");
+
+  // Already signed in? go straight to portal
+  if (!token && aaGetToken()){
+    location.replace("/portal");
+    return;
+  }
+
+  // If no token at all, instruct
+  if (!token){
+    const msg = (reason === "expired")
+      ? "This magic link has expired (links are valid for 1 hour). <strong>Go to your portal</strong> to request a new link."
+      : "If you just purchased, open the email we sent and tap the link.";
+    showActions(msg, true);
+    return;
+  }
+
+  // Try to claim
+  (async () => {
+    try {
+      const r   = await fetch(CLAIM_URL, {
+        method:"POST",
+        headers:{ "content-type":"application/json" },
+        body: JSON.stringify({ action:"claim", token })
+      });
+      const raw = await r.text();
+      let data  = null; try { data = raw ? JSON.parse(raw) : null; } catch {}
+
+      // success -> save + redirect
+      if (r.ok && data?.ok && data?.session){
+        if (data.tokens) for (const [k,v] of Object.entries(data.tokens||{})){ try{ localStorage.setItem(`aa.token.${k}`, v);}catch{} }
+        try { localStorage.setItem("aa.email", data.email || ""); } catch {}
+        try { localStorage.setItem("aa.products", JSON.stringify(data.products || [])); } catch {}
+        try { localStorage.setItem("aa_session", data.session); } catch {}
+        document.cookie = "aa_session="+encodeURIComponent(data.session)
+           + "; Path=/"
+           + "; Max-Age=" + (60*60*24*30)
+           + "; Secure; SameSite=Lax"
+           + "; Domain=.alchalign.com";   // <-- works on apex + www
+
+        status.innerHTML = "<span class='good'>Link accepted.</span> Redirecting…";
+        setTimeout(()=>location.replace("/portal"), 300);
+        return;
+      }
+
+      // failure -> reason-aware guidance
+      const srvReason = (data?.reason || data?.error || data?.message || "").toLowerCase();
+      const expired   = srvReason.includes("expire") || reason === "expired" ||
+                        (data?.expiresAt && Date.now() > Number(data.expiresAt));
+
+      if (expired){
+        showActions("This magic link has expired (links are valid for 1 hour). <strong>Go to your portal</strong> to request a new link.", true);
+      } else {
+        showActions("This magic link is invalid or already used. Please open the latest email and tap the link again, or <strong>go to your portal</strong> to request a new one.", true);
+      }
+    } catch {
+      showActions("Network problem while claiming your link. Please try from your email again, or <strong>go to your portal</strong> to request a new link.", true);
+    }
+  })();
+})();
+</script>

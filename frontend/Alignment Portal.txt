@@ -1,0 +1,1037 @@
+PAGE: Alignment Portal
+
+
+RAW HTML:
+<form id="alignmentForm">
+
+<div class="progress-indicator">
+  <ul id="progressSteps">
+    <li class="step active" data-symbol="🜁">Aura Read</li>
+    <li class="step active" data-symbol="🜄">Contradictions</li>
+    <li class="step" data-symbol="🜃">Your Gifts</li>
+    <li class="step" data-symbol="🜂">The Reckoning</li>
+    <li class="step" data-symbol="🜍">Clearing</li>
+    <li class="step" data-symbol="🜔">Integration</li>
+    <li class="step" data-symbol="🝓">Review</li>
+  </ul>
+</div>
+
+<!-- STEP 1: Field Scan -->
+<div class="form-step" data-step="1">
+  <h2>Aura Read</h2>
+
+<div class="form-question-block">
+ <p class="section-intro">
+    Let’s tune in. These questions help us sense what’s happening beneath the surface.
+  </p>
+  <label for="thoughtLoop" class="question-label">
+    What thought or theme keeps looping in your mind?
+  </label>
+  <p class="question-prompt">
+    A thought, question, worry, idea, or topic that keeps showing up.
+  </p>
+  <textarea id="thoughtLoop" name="thoughtLoop" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="pattern" class="question-label">
+    What do you keep doing even though you want to be done with it?
+  </label>
+  <p class="question-prompt">
+    This could be something you say, avoid, repeat, or reach for.
+  </p>
+  <textarea id="pattern" name="pattern" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block" role="radiogroup"
+     aria-labelledby="systemTone-label"
+     aria-describedby="systemTone-help">
+
+  <label
+    id="systemTone-label"
+    for="systemTone"
+    class="question-label">
+    How would you describe your current inner state?
+  </label>
+  <!-- Struggle -->
+  <label><input type="radio" name="systemTone" value="Overwhelmed" required> Overwhelmed</label>
+  <label><input type="radio" name="systemTone" value="Frozen or shut down"> Frozen or shut down</label>
+  <label><input type="radio" name="systemTone" value="Disconnected or in the clouds"> Disconnected or in the clouds </label>
+  <label><input type="radio" name="systemTone" value="Anxious or on edge"> Anxious or on edge</label>
+  <label><input type="radio" name="systemTone" value="Angry or irritated"> Angry or irritated</label>
+
+  <!-- Neutral -->
+  <label><input type="radio" name="systemTone" value="Heavy or resigned"> Heavy or resigned</label>
+  <label><input type="radio" name="systemTone" value="Focused but under pressure"> Focused but under pressure</label>
+  <label><input type="radio" name="systemTone" value="Swinging between highs and lows"> Swinging between highs and lows</label>
+
+  <!-- Flowing / at ease -->
+  <label><input type="radio" name="systemTone" value="Spacious and grounded"> Grounded & steady</label>
+  <label><input type="radio" name="systemTone" value="Energized and motivated"> Energized and motivated</label>
+  <label><input type="radio" name="systemTone" value="Joyful or lighthearted"> Joyful or lighthearted</label>
+</div>
+
+
+<div class="form-question-block">
+  <label for="quietLonging" class="question-label">
+   What are you quietly longing for, even if it feels impossible?
+  </label>
+  <p class="question-prompt">
+    Name it even if it seems unrealistic.
+  </p>
+  <textarea id="quietLonging" name="quietLonging" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="pressure" class="question-label">
+    What outside pressure feels heaviest right now?
+  </label>
+  <p class="question-prompt">
+    Think about expectations, duties, or demands on you — from work, family, money, or culture.
+  </p>
+  <textarea id="pressure" name="pressure" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block" role="group"
+     aria-labelledby="expressionOutlet-label"
+     aria-describedby="expressionOutlet-help">
+
+  <label
+    id="expressionOutlet-label"
+    for="expressionOutlet"
+    class="question-label">
+    Where have you been expressing yourself, if at all?
+  </label>
+
+  <p id="expressionOutlet-help" class="question-prompt">
+    Choose up to 3 or "Not expressing lately".
+  </p>
+  <label><input type="checkbox" name="expressionOutlet" value="Creative / art work">Creative / art work</label>
+  <label><input type="checkbox" name="expressionOutlet" value="Writing / journaling">Writing / journaling</label>
+  <label><input type="checkbox" name="expressionOutlet" value="Movement or body practice">Movement or body practice</label>
+  <label><input type="checkbox" name="expressionOutlet" value="Music or sound"> Music or sound</label>
+  <label><input type="checkbox" name="expressionOutlet" value="Work, problem-solving, or hands-on projects">Work, problem-solving, or hands-on projects</label>
+  <label><input type="checkbox" name="expressionOutlet" value="Honest conversation"> Honest conversation</label>
+  <label><input type="checkbox" name="expressionOutlet" value="Online expression">Online expression</label>
+  <label><input type="checkbox" name="expressionOutlet" value="Private ritual / nature connection">Private ritual / nature connection</label>
+   <label><input type="checkbox" name="expressionOutlet" value="Not expressing lately">Not expressing lately</label>
+</div>
+
+<div class="form-question-block" role="radiogroup"
+     aria-labelledby="currentOrientation-label">
+
+  <label
+    id="currentOrientation-label"
+    for="currentOrientation"
+    class="question-label">
+    Which best matches how you’re getting through the day?
+  </label>
+  <p id="currentOrientation-help" class="question-prompt">
+     Most days if not every day.
+  </p>
+
+ <!-- Struggle -->
+  <label><input type="radio" name="currentOrientation" value="Going through the motions" required>Going through the motions</label>
+  <label><input type="radio" name="currentOrientation" value="Avoiding things and shutting down"> Avoiding things and shutting down</label>
+  <label><input type="radio" name="currentOrientation" value="Holding it together on the outside, struggling inside"> Holding it together on the outside, struggling inside</label>
+  <label><input type="radio" name="currentOrientation" value="Pushing hard, but on edge"> Pushing hard, but on edge</label>
+
+  <!-- Neutral -->
+  <label><input type="radio" name="currentOrientation" value="Managing but inconsistent"> Managing but inconsistent</label>
+  <label><input type="radio" name="currentOrientation" value="Getting by with effort"> Getting by with effort</label>
+
+  <!-- Flowing / at ease -->
+  <label><input type="radio" name="currentOrientation" value="Present and connected"> Present and connected</label>
+  <label><input type="radio" name="currentOrientation" value="Moving through the day with ease"> Moving through the day with ease</label>
+</div>
+</div>
+
+  <!-- STEP 2: Contradictions -->
+  <div class="form-step" data-step="2">
+  <h2>Contradictions</h2>
+
+ <div class="form-question-block">
+ <p class="section-intro">
+    These are the fault lines. The place where two truths pull in opposite directions.
+  </p>
+  <label for="whatMattersMost" class="question-label">
+    When you drop your act, what matters most?
+  </label>
+  <p class="question-prompt">
+    It could be a feeling (like belonging), a connection (like friendship), or a value (like integrity).
+  </p>
+  <textarea id="whatMattersMost" name="whatMattersMost" maxlength="200" required></textarea>
+</div>
+
+ <div class="form-question-block">
+  <label for="soulTraits" class="question-label">
+    When you feel most like yourself, what are you like?
+  </label>
+  <p class="question-prompt">
+    Think about your energy, qualities, and presence.
+  </p>
+  <textarea id="soulTraits" name="soulTraits" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="anchors" class="question-label">
+    What do you keep holding onto even when it makes life harder?
+  </label>
+  <p class="question-prompt">
+    This could be a belief, a way of treating people, a sense of rightness, or something personal you refuse to let go of.
+  </p>
+  <textarea id="anchors" name="anchors" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="obstacles" class="question-label">
+    What kind of obstacle or resistance keeps repeating in your life?
+  </label>
+  <p class="question-prompt">
+    Think of recurring situations or themes—money stress, health flare-ups, toxic bosses, chaotic relationships—things that keep showing up even when the people or places change. 
+  </p>
+  <textarea id="obstacles" name="obstacles" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="stuckPoint" class="question-label">
+    Where do you always seem to get stuck when you try to change something?
+  </label>
+  <p class="question-prompt">
+    Think about the point you tend to loop: right before you act, right after you start, or when someone reacts or pushes back.
+  </p>
+  <textarea id="stuckPoint" name="stuckPoint" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="dreamLife" class="question-label">
+    If life fit you, how would each day feel?
+  </label>
+  <p class="question-prompt">
+    What pace feels right? How much space do you need? What mood? How does your body feel?
+  </p>
+  <textarea id="dreamLife" name="dreamLife" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="rememberedFor" class="question-label">
+    What would you like to be remembered for?
+  </label>
+  <p class="question-prompt">
+    This could be something you created, stood for, changed, or gave to others.
+  </p>
+  <textarea id="rememberedFor" name="rememberedFor" maxlength="200" required></textarea>
+</div>
+</div>
+
+  <!-- STEP 3: Gifts + Purpose -->
+  <div class="form-step" data-step="3">
+  <h2>Your Gifts</h2>
+
+<div class="form-question-block">
+ <p class="section-intro">
+    What still wants to live through you — even in the middle of misalignment?
+  </p>
+  <label for="lifeSpark" class="question-label">
+    What have you experienced, witnessed, or been exposed to that still bothers you—no matter how much time has passed?
+  </label>
+  <p class="question-prompt">
+    This could be a situation, dynamic, injustice, or pattern that still stirs something in you.
+  </p>
+  <textarea id="lifeSpark" name="lifeSpark" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="unspokenKnowing" class="question-label">
+    What do people tend to ask you for help with or lean on you for?
+  </label>
+  <p class="question-prompt">
+    Perhaps advice, steadiness, insight, or support.
+  </p>
+  <textarea id="unspokenKnowing" name="unspokenKnowing" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="seeing" class="question-label">
+    What kinds of patterns or dynamics do you instantly notice?
+  </label>
+  <p class="question-prompt">
+    Consider things others miss, situations you sense early, or patterns that seem obvious to you.
+  </p>
+  <textarea id="seeing" name="seeing" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="dismissed" class="question-label">
+    Has any part of you ever been shut down, dismissed, or made to feel out of place?
+  </label>
+  <p class="question-prompt">
+    This could be a feeling, ability, trait, perspective, or way of being.
+  </p>
+  <textarea id="dismissed" name="dismissed" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="sacredProtect" class="question-label">
+    What feels especially worth protecting right now?
+  </label>
+  <p class="question-prompt">
+    Perhaps a value, relationship, boundary, or kind of energy in you.
+  </p>
+  <textarea id="sacredProtect" name="sacredProtect" maxlength="200" required></textarea>
+</div>
+</div>
+
+<!-- STEP 4: Truth-Telling -->
+<div class="form-step truth-phase" data-step="4">
+  <div class="phase-title">The Reckoning</div>
+  <h2 class="section-header">Truth-Telling</h2>
+  <p class="section-intro">
+    We often seek alignment without telling the truth about what we’ve become. This step is not about self-improvement — it’s about unmasking. Let yourself be sharp, honest, and free of pretension.
+  </p>
+
+  <label for="lifeLies">What lies have you been telling about your life?</label>
+  <p class="helper-text">Performances or half-truths you’ve upheld. Or maybe things that were never true.</p>
+  <textarea id="lifeLies" name="lifeLies" rows="4"></textarea>
+
+  <label for="falseConsent">What have you been pretending to be okay with?</label>
+  <p class="helper-text">Where you say “it’s fine” but it’s not.</p>
+  <textarea id="falseConsent" name="falseConsent" rows="4"></textarea>
+
+  <label for="peaceKeepingMask">Where do you disappear yourself to keep the peace?</label>
+  <p class="helper-text">Think about the situations or relationships where you mute your needs or desires to avoid conflict or rejection.</p>
+  <textarea id="peaceKeepingMask" name="peaceKeepingMask" rows="4"></textarea>
+
+  <label for="deadSystem">What part of your life is dead but still running?</label>
+  <p class="helper-text">Something you’re still participating in out of duty or fear, even though it no longer serves you.</p>
+  <textarea id="deadSystem" name="deadSystem" rows="4"></textarea>
+
+  <label for="approvalPerformance">How are you still performing to earn approval?</label>
+  <p class="helper-text">What roles or versions of you are centered around being liked, praised, or seen as “good”?</p>
+  <textarea id="approvalPerformance" name="approvalPerformance" rows="4"></textarea>
+</div>
+
+  <!-- STEP 5: Clearing + Rebuilding -->
+  <div class="form-step" data-step="5">
+  <h2>Clearing & Rebuilding</h2>
+
+<div class="form-question-block">
+ <p class="section-intro">
+    We begin rebuilding by first seeing what needs to fall away.
+  </p>
+  <label for="environment" class="question-label">
+    What kind of environment brings you clarity and energy?
+  </label>
+  <p class="question-prompt">
+    This might be a certain pace, kind of space, type of people, or way of working that helps you feel sharp, creative, or stable.
+  </p>
+  <textarea id="environment" name="environment" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="drainingEnvironment" class="question-label">
+    What kind of environment wears you down or leaves you dimmed?
+  </label>
+  <p class="question-prompt">
+    Think about settings, dynamics, or kinds of people that drain you—noise, criticism, constant urgency, or superficial / performative spaces.
+  </p>
+  <textarea id="drainingEnvironment" name="drainingEnvironment" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block" role="radiogroup"
+     aria-labelledby="primaryEssence-label"
+     aria-describedby="primaryEssence-help">
+
+  <label
+    id="primaryEssence-label"
+    for="primaryEssence"
+    class="question-label">
+    Which of these best reflects how your energy moves in the world?
+  </label>
+  <p id="primaryEssence-help" class="question-prompt">
+   Choose the statement that feels most true to how your presence tends to work or affect others.
+  </p>
+  <label><input type="radio" name="primaryEssence" value="I name what others conceal" required> I name what others conceal</label>
+  <label><input type="radio" name="primaryEssence" value="I hold things together"> I hold things together</label>
+  <label><input type="radio" name="primaryEssence" value="I stir change"> I stir change</label>
+  <label><input type="radio" name="primaryEssence" value="I sense what’s emerging"> I sense what’s emerging</label>
+  <label><input type="radio" name="primaryEssence" value="I feel what others carry"> I feel what others carry</label>
+  <label><input type="radio" name="primaryEssence" value="I rebuild what breaks"> I rebuild what breaks</label>
+  <label><input type="radio" name="primaryEssence" value="I spot patterns others miss"> I spot patterns others miss</label>
+  <label><input type="radio" name="primaryEssence" value="I translate what’s unspoken"> I translate what’s unspoken</label>
+  <label><input type="radio" name="primaryEssence" value="I connect people and ideas"> I connect people and ideas</label>
+</div>
+
+
+<div class="form-question-block">
+  <label for="energyLeak" class="question-label">
+    What are you currently doing that feels most draining, even if it seems necessary?
+  </label>
+  <p class="question-prompt">
+    This could be something that takes your energy, but you’ve convinced yourself you have to keep doing.
+  </p>
+  <textarea id="energyLeak" name="energyLeak" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="whatIf" class="question-label">
+    Is there something you're not saying or not doing because you're worried what might happen if you did?
+  </label>
+  <p class="question-prompt">
+    If anything comes to mind, just name it in a word or phrase. If not, leave this blank.
+  </p>
+  <textarea id="whatIf" name="whatIf" maxlength="200"></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="lifeTension" class="question-label">
+    Where do you feel the most tension between what you want and what you’re actually doing?
+  </label>
+  <p class="question-prompt">
+    Consider areas where you feel pulled in two directions or where your actions don’t match what you really want.
+  </p>
+  <textarea id="lifeTension" name="lifeTension" maxlength="200" required></textarea>
+</div>
+</div>
+ 
+  <!-- STEP 6: Integration Anchor -->
+  <div class="form-step" data-step="6">
+  <h2>Integration</h2>
+
+<div class="form-question-block">
+<p class="section-intro">
+    Alignment is not a one-time fix. It’s a way of relating to yourself when the old pattern returns.
+  </p>
+  <label for="pullBack" class="question-label">
+    When do you feel yourself pulling back or going quiet, even if part of you wants to stay present?
+  </label>
+  <p class="question-prompt">
+    This might show up around certain people, topics, or moments—like when there’s conflict, intensity, high stakes, or emotional risk.
+  </p>
+  <textarea id="pullBack" name="pullBack" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="enough" class="question-label">
+    If something in you could finally say “no” or “enough”, what would it be saying it to?
+  </label>
+  <p class="question-prompt">
+    Perhaps a role, demand, cycle, or situation that’s gone too far.
+  </p>
+  <textarea id="enough" name="enough" maxlength="200" required></textarea>
+</div>
+
+<div class="form-question-block">
+  <label for="costOfPeace" class="question-label">
+    What’s becoming harder to keep pretending, avoiding, or carrying?
+  </label>
+  <p class="question-prompt">
+    This could be a memory, conversation, expectation, role, or part of yourself.
+  </p>
+  <textarea id="costOfPeace" name="costOfPeace" maxlength="300" required></textarea>
+</div>
+
+<div class="form-question-block" role="radiogroup"
+     aria-labelledby="newAnchor-label"
+     aria-describedby="newAnchor-help">
+
+  <label
+    id="newAnchor-label"
+    for="newAnchor"
+    class="question-label">
+    Which of these statements feels like your new internal law?
+  </label>
+  <p id="newAnchor-help" class="question-prompt">
+   These are inner truths that feel non-negotiable now.
+  </p>
+<label><input type="radio" name="newAnchor" value="I don’t owe anyone a performance of my old self" required> I don’t owe anyone a performance of my old self</label>
+  <label><input type="radio" name="newAnchor" value="I allow the unknown to unfold without forcing answers"> I allow the unknown to unfold without forcing answers</label>
+  <label><input type="radio" name="newAnchor" value="Truth is more important than comfort"> Truth is more important than comfort</label>
+<label><input type="radio" name="newAnchor" value="I measure my life by how alive I feel, not by how impressed others are">I measure my life by how alive I feel, not by how impressed others are</label>
+  <label><input type="radio" name="newAnchor" value="I accept the cost of being misunderstood"> I accept the cost of being misunderstood</label>
+  <label><input type="radio" name="newAnchor" value="I will not override what I know"> I will not override what I know</label>
+  <label><input type="radio" name="newAnchor" value="Let the fallout come — I won’t go back"> Let the fallout come — I won’t go back</label>
+  <label><input type="radio" name="newAnchor" value="The boundaries I honor now will safeguard me later"> The boundaries I honor now will safeguard me later</label>
+  <label><input type="radio" name="newAnchor" value="This time, I stay with myself"> This time, I stay with myself</label>
+</div>
+</div>
+
+
+<!-- STEP 7: Final Review -->
+<div class="form-step" data-step="7">
+  <h2>Review</h2>
+  <div id="reviewContainer"></div>
+
+  <label for="email">Email a copy? (Optional)</label>
+  <input type="email" id="email" name="email" placeholder="you@example.com" />
+
+  <div id="statusMessage" class="status-message" style="margin-top: 12px;"></div>
+</div>
+
+  <!-- Navigation Buttons -->
+  <div class="form-navigation">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn">Next</button>
+    <button type="submit" id="submitBtn">Start the Scan</button>
+  </div>
+</form>
+
+
+
+
+
+RAW JS:
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("🔧 JS Loaded");
+  const form = document.getElementById("alignmentForm");
+  const steps = document.querySelectorAll(".form-step");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const submitBtn = document.getElementById("submitBtn");
+  const progressBar = document.getElementById("progressBar");
+  const reviewContainer = document.getElementById("reviewContainer");
+  const statusMsg = document.getElementById("statusMessage");
+
+  // Progress indicator
+  const progressEl = document.querySelector('.progress-indicator');
+  const stepEls = document.querySelectorAll('#progressSteps .step');
+  progressEl?.style.setProperty('--total', stepEls.length);
+  progressEl?.style.setProperty('--step', 1);
+
+  // ===== Screen Wake Lock (keep mobile from sleeping during generation) =====
+  let wakeLock = null;
+  let isGenerating = false; // NEW: track when guide generation is in flight
+
+  async function keepScreenAwake() {
+    if (!('wakeLock' in navigator)) return; // silently no-op if unsupported
+    try {
+      if (wakeLock) return; // NEW: avoid double-requesting
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('[AlignmentScan] Screen wake lock active');
+      wakeLock.addEventListener('release', () => {
+        console.log('[AlignmentScan] Wake lock released (system)');
+        wakeLock = null;
+      });
+    } catch (err) {
+      console.log('[AlignmentScan] Wake lock failed:', err.name, err.message);
+    }
+  }
+
+  async function releaseWakeLock() {
+    if (!wakeLock) return;
+    try {
+      await wakeLock.release();
+      console.log('[AlignmentScan] Screen wake lock released');
+    } catch (err) {
+      console.log('[AlignmentScan] Error releasing wake lock:', err.name, err.message);
+    } finally {
+      wakeLock = null;
+    }
+  }
+
+  // NEW: Re-acquire wake lock if user returns while generating
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && isGenerating) {
+      keepScreenAwake();
+    }
+  });
+
+// ------ better error messages -----------
+function friendlyScanError(slug, code) {
+  switch (slug) {
+    case "not_logged_in":
+      return "Your access link isn’t active anymore. Open your latest alchAlign email and use the link there to continue.";
+
+    case "no_credits":
+      return "You’ve used all available Alignment Scan runs on this access link. You can purchase another scan to generate a new guide.";
+
+    case "generation_failed":
+      return "We weren’t able to complete your Alignment Scan this time. Please try again in a few minutes.";
+
+    case "empty_prompt":
+      return "We didn’t receive your answers correctly. Please refresh the page and submit the scan again.";
+
+    case "billing_failed":
+      return "We had trouble confirming your access just now. Please try again, and contact support if it keeps happening.";
+
+    default:
+      if (code === 502 || code === 500) {
+        return "We hit a temporary issue while generating your Alignment Scan. Please try again shortly.";
+      }
+      if (slug === "network_error") {
+        return "We couldn’t reach the Alignment Scan service. Check your connection and try again.";
+      }
+      return "We couldn’t complete your Alignment Scan. Please try again. If it keeps happening, contact support.";
+  }
+}
+
+  // ---- tiny helper (guarded; drop once per page/app) ----
+  if (typeof window.aaGetToken !== "function") {
+    window.aaGetToken = function(){
+      return localStorage.getItem("aa_session") ||
+             (document.cookie.match(/(?:^|;\s*)aa_session=([^;]+)/)||[])[1] || null;
+    };
+  }
+
+  // Keep both disabled until entitlements says OK
+  nextBtn.disabled = true;
+  submitBtn.disabled = true;
+
+  // ---- gate button by credits (controls BOTH next & submit) ----
+  (async function gate(){
+    const ENTITLEMENTS_URL = "https://redacted-pipedream-endpoint.invalid";
+    const PRODUCT = "alignmentscan";
+
+    const submit = document.getElementById("submitBtn");
+    // Hard reset so we never start in a busy state (even after bfcache restore)
+    function resetSubmitVisual(){
+      if (!submitBtn) return;
+      submitBtn.disabled = submitBtn.disabled; // no-op, just keep current disabled state
+      submitBtn.classList.remove('busy');      // wipe any legacy class
+      submitBtn.removeAttribute('aria-busy');
+      submitBtn.textContent = 'Start the Scan';
+    }
+    resetSubmitVisual();
+    window.addEventListener('pageshow', resetSubmitVisual); // handles back/forward cache
+
+    const next   = document.getElementById("nextBtn");
+    if (!submit && !next) return;
+
+    let note = document.getElementById("gateMsg");
+    if (!note) {
+      note = document.createElement("div");
+      note.id="gateMsg";
+      note.style.marginTop="8px";
+      (submit || next).after(note);
+    }
+
+    if (submit) submit.disabled = true;
+    if (next)   next.disabled   = true;
+    note.textContent = "Checking access…";
+
+    const tok = aaGetToken();
+    if (!tok) {
+      note.textContent = "You’re not signed in. Open your email magic link to continue.";
+      return;
+    }
+
+    try {
+      const r = await fetch(ENTITLEMENTS_URL, { headers: { Authorization: "Bearer " + tok }});
+      if (!r.ok) throw 0;
+      const e = await r.json();
+      const credits = (e.credits && e.credits[PRODUCT]) || 0;
+
+      if (credits > 0) {
+        if (submit) submit.disabled = false;
+        if (next)   next.disabled   = false; // ✅ enable Next when credits exist
+        note.textContent = `You have ${credits} run${credits>1?"s":""} remaining.`;
+      } else {
+        if (submit) submit.disabled = true;
+        if (next)   next.disabled   = true;  // 🔒 keep Next disabled
+        note.innerHTML = `No credits left. <a href="/${PRODUCT}">Buy another run</a>.`;
+      }
+    } catch {
+      if (submit) submit.disabled = true;
+      if (next)   next.disabled   = true;    // 🔒 keep Next disabled on error
+      note.textContent = "Could not verify access.";
+    }
+  })();
+
+  let currentStep = 1;
+  let allowProgressNav = false; // 🔒 Progress bar starts locked
+  const totalSteps = steps.length;
+
+  // Step nav: Clickable progress bar after review
+  document.querySelectorAll("#progressSteps .step").forEach((stepEl, idx) => {
+    stepEl.addEventListener("click", () => {
+      if (allowProgressNav && idx + 1 < totalSteps) {
+        console.log("🟦 Jumping to step", idx + 1);
+        currentStep = idx + 1;
+        showStep(currentStep);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    });
+  });
+
+  function showStep(step) {
+    console.log("🔍 Showing step:", step);
+    steps.forEach((s) => s.style.display = "none");
+    const current = document.querySelector(`.form-step[data-step="${step}"]`);
+    if (current) { current.style.display = "block"; console.log("✅ Step found and displayed."); } else { console.warn("❌ Step not found:", step); }
+
+    if (step === totalSteps) {
+      allowProgressNav = true;
+    }
+
+    prevBtn.style.display = step === 1 ? "none" : "inline-block";
+    nextBtn.style.display = step === totalSteps ? "none" : "inline-block";
+    submitBtn.style.display = step === totalSteps ? "inline-block" : "none";
+
+    updateProgress(step);
+    progressEl?.style.setProperty('--step', step);
+  }
+
+  function updateProgress(step) {
+    const stepsUI = document.querySelectorAll("#progressSteps .step");
+    stepsUI.forEach((el, idx) => {
+      if (idx < step) el.classList.add("active");
+      else el.classList.remove("active");
+    });
+  }
+
+  function collectFormData() {
+    const data = {};
+    const fields = document.querySelectorAll("input, select, textarea");
+    const seenRadioGroups = new Set();
+
+    fields.forEach((el) => {
+      const name = el.name || el.id;
+      if (!name) return;
+
+      if (el.type === "checkbox") {
+        if (!data[name]) data[name] = [];
+        if (el.checked) data[name].push(el.value);
+      } else if (el.type === "radio") {
+        if (seenRadioGroups.has(name)) return;
+        const selected = document.querySelector(`input[name="${name}"]:checked`);
+        data[name] = selected ? selected.value.trim() : null;
+        seenRadioGroups.add(name);
+      } else if (el.multiple) {
+        const selected = Array.from(el.selectedOptions).map((opt) => opt.value);
+        data[name] = selected;
+      } else if (el.type !== "submit" && el.type !== "button") {
+        data[name] = el.value.trim();
+      }
+    });
+
+    Object.keys(data).forEach((key) => {
+      if (typeof data[key] === "string" && data[key].trim() === "") {
+        data[key] = null;
+      }
+    });
+
+    return data;
+  }
+
+  form.addEventListener("input", () => {
+    const currentData = collectFormData();
+    localStorage.setItem("fieldScanDraft", JSON.stringify(currentData));
+  });
+
+  // 🔄 Auto-restore from localStorage
+  const saved = localStorage.getItem("fieldScanDraft");
+  if (saved) {
+    const data = JSON.parse(saved);
+    Object.entries(data).forEach(([key, value]) => {
+      const field = form.elements[key];
+      if (!field) return;
+
+      if (Array.isArray(value)) {
+        value.forEach(v => {
+          const el = form.querySelector(`[name="${key}"][value="${v}"]`);
+          if (el) el.checked = true;
+        });
+      } else {
+        field.value = value;
+      }
+    });
+  }
+
+  function renderReview(data) {
+  reviewContainer.innerHTML = "";
+
+  steps.forEach((step, i) => {
+    const stepNumber = parseInt(step.getAttribute("data-step"), 10);
+    if (stepNumber === totalSteps) return;
+
+    const stepTitle = step.querySelector("h2")?.textContent || "";
+    const fields = step.querySelectorAll("textarea, input, select");
+
+    const section = document.createElement("div");
+    section.className = "review-block";
+    section.innerHTML = `<h3 class="review-title">${stepTitle}</h3>`;
+
+    const seenNames = new Set();
+
+    fields.forEach((field) => {
+      const key = field.name;
+      if (!key || seenNames.has(key)) return;
+      seenNames.add(key);
+
+      let label = key;
+
+      if (field.type === "radio" || field.type === "checkbox") {
+        // 1) Try legend inside a fieldset
+        const fieldset = field.closest("fieldset");
+        const legendEl = fieldset?.querySelector("legend");
+        if (legendEl) {
+          label = legendEl.textContent.trim();
+        } else {
+          // 2) Try the block's .question-label (your current pattern)
+          const block = field.closest(".form-question-block");
+          const qLabel = block?.querySelector(".question-label");
+          if (qLabel) {
+            label = qLabel.textContent.trim();
+          } else {
+            // 3) Last resort: ARIA-labelledby on group
+            const group = field.closest('[role="radiogroup"],[role="group"]');
+            const labelledById = group?.getAttribute("aria-labelledby");
+            if (labelledById) {
+              const labelNode = document.getElementById(labelledById);
+              if (labelNode) label = labelNode.textContent.trim();
+            }
+          }
+        }
+      } else if (field.id) {
+        // textareas, text inputs, etc.
+        const labelEl = form.querySelector(`label[for="${field.id}"]`);
+        if (labelEl) {
+          label = labelEl.textContent.trim();
+        }
+      }
+
+      const value = data[key];
+      if (value !== undefined && value !== "") {
+        const item = document.createElement("div");
+        item.className = "review-field";
+        item.innerHTML = `<strong>${label}</strong><p>${Array.isArray(value) ? value.join(", ") : value}</p>`;
+
+        // click-to-jump back to step
+        item.addEventListener("click", () => {
+          currentStep = i + 1;
+          showStep(currentStep);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        section.appendChild(item);
+      }
+    });
+
+    // clicking anywhere in the block also jumps back
+    section.addEventListener("click", () => {
+      currentStep = i + 1;
+      showStep(currentStep);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    reviewContainer.appendChild(section);
+  });
+}
+
+  function validateCurrentStep() {
+    const currentFields = steps[currentStep - 1].querySelectorAll("textarea, input, select");
+    let valid = true;
+    const seenGroups = new Set();
+
+    currentFields.forEach(field => {
+      const name = field.name;
+      const type = field.type;
+
+      if ((type === "radio" || type === "checkbox") && !seenGroups.has(name)) {
+        const group = steps[currentStep - 1].querySelectorAll(`[name="${name}"]`);
+        const oneChecked = Array.from(group).some(input => input.checked);
+
+        if (!oneChecked) {
+          valid = false;
+          group.forEach(input => input.classList.add("field-error"));
+          const fieldset = group[0].closest("fieldset");
+          if (fieldset) fieldset.classList.add("fieldset-error");
+        } else {
+          group.forEach(input => input.classList.remove("field-error"));
+          const fieldset = group[0].closest("fieldset");
+          if (fieldset) fieldset.classList.remove("fieldset-error");
+        }
+
+        seenGroups.add(name);
+      }
+
+      if (type !== "radio" && type !== "checkbox") {
+        if (!field.checkValidity()) {
+          valid = false;
+          field.classList.add("field-error");
+        } else {
+          field.classList.remove("field-error");
+        }
+      }
+    });
+
+    if (!valid) {
+      const firstError = steps[currentStep - 1].querySelector(".field-error, .fieldset-error");
+      if (firstError) {
+        firstError.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+
+    return valid;
+  }
+
+  nextBtn.addEventListener("click", () => {
+    if (nextBtn.disabled) return; // 🔒 no credits, no advance
+
+    if (currentStep < totalSteps) {
+      const isValid = validateCurrentStep();
+      if (!isValid) return;
+
+      currentStep++;
+      if (currentStep === totalSteps) {
+        const data = collectFormData();
+        renderReview(data);
+      }
+
+      showStep(currentStep);
+      statusMsg.textContent = "";
+    }
+  });
+
+  prevBtn.addEventListener("click", () => {
+    if (currentStep > 1) {
+      currentStep--;
+      showStep(currentStep);
+    }
+  });
+
+  let loadingInterval;
+
+  function startRotatingMessages(messages, targetElement, interval = 3500) {
+    let index = 0;
+    if (!targetElement) return;
+
+    targetElement.textContent = messages[index];
+    loadingInterval = setInterval(() => {
+      index = (index + 1) % messages.length;
+      targetElement.textContent = messages[index];
+    }, interval);
+  }
+
+  function stopRotatingMessages(finalMessage) {
+    clearInterval(loadingInterval);
+    if (finalMessage && statusMsg) {
+      statusMsg.textContent = finalMessage;
+    }
+  }
+
+  const loadingMessages = [
+    "Scanning for hidden contradictions...",
+    "Mapping your inner alignment...",
+    "Listening for what's underneath...",
+    "Locating deeper motivations...",
+    "Almost there... still tuning in...",
+    "Translating your responses into insight..."
+  ];
+
+  // Busy-state helpers
+  function setBusy(btn, text = 'Scanning…') {
+    if (!btn) return;
+    if (!btn.dataset.prev) btn.dataset.prev = btn.textContent;
+    btn.setAttribute('aria-busy', 'true');
+    btn.textContent = text;
+  }
+  function clearBusy(btn) {
+    if (!btn) return;
+    btn.removeAttribute('aria-busy');
+    btn.textContent = btn.dataset.prev || 'Start the Scan';
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const isValid = validateCurrentStep();
+    if (!isValid) return;
+
+    const data = collectFormData();
+    console.log("📦 Final collected form data:", data);
+    localStorage.setItem("alignmentMapData", JSON.stringify(data));
+
+    // start animation + spinner
+    setBusy(submitBtn, 'Scanning…');
+    submitBtn.disabled = true;
+    startRotatingMessages(loadingMessages, statusMsg);
+
+    try {
+      isGenerating = true;           // NEW: mark as in-flight
+      await keepScreenAwake();       // 🔒 Keep the screen awake while the guide is generating
+
+      const aa = aaGetToken(); // v1.<data>.<sig> from localStorage/cookie
+      const jobId = crypto?.randomUUID?.() ?? String(Date.now());
+
+        const response = await fetch("https://redacted-pipedream-endpoint.invalid", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(aa ? { Authorization: "Bearer " + aa } : {})
+        },
+        body: JSON.stringify({
+          ...data,
+          ...(aa ? { aa_session: aa } : {}),
+          jobId
+        }),
+      });
+
+      let result;
+      let rawText = "";
+      try {
+        rawText = await response.text();
+        result = rawText ? JSON.parse(rawText) : {};
+      } catch {
+        result = { raw: rawText };
+      }
+
+      // Handle HTTP or explicit backend error
+      const apiSuccess = result && result.success === true;
+      const apiCode = typeof result?.code === "number" ? result.code : response.status;
+      const apiErrorSlug = result?.error || (response.ok ? null : "unexpected_error");
+
+      if (!response.ok || !apiSuccess) {
+        const friendly = friendlyScanError(apiErrorSlug, apiCode);
+        console.error("Alignment Scan API error:", {
+          httpStatus: response.status,
+          apiCode,
+          apiErrorSlug,
+          raw: result,
+        });
+
+        stopRotatingMessages(`⚠️ ${friendly}`);
+        clearBusy(submitBtn);
+        submitBtn.disabled = false;
+        return;
+      }
+
+      // Success path: extract HTML from the standard shape
+      const html =
+        result?.guide?.html ??
+        result?.html ??
+        (typeof result?.raw === "string" ? result.raw : null);
+
+      if (!html || !String(html).trim()) {
+        const friendly = friendlyScanError("empty_prompt", apiCode);
+        stopRotatingMessages(`⚠️ ${friendly}`);
+        clearBusy(submitBtn);
+        submitBtn.disabled = false;
+        return;
+      }
+
+      try {
+        localStorage.setItem("alignmentGuide", JSON.stringify({ guide: { html } }));
+        localStorage.removeItem("fieldScanDraft");
+      } catch {}
+
+      stopRotatingMessages("✅ Success! Redirecting...");
+      window.location.href = "/alignment-guide";
+
+
+     } catch (error) {
+      console.error("❌ Submission Error:", error);
+      const friendly = friendlyScanError("network_error");
+      stopRotatingMessages(`⚠️ ${friendly}`);
+      clearBusy(submitBtn);
+      submitBtn.disabled = false;
+    } finally {
+      isGenerating = false;         // NEW: clear flag
+      await releaseWakeLock();      // ✅ Always release wake lock
+    }
+  });
+
+  showStep(currentStep); // 👈 Initial render
+});
+</script>

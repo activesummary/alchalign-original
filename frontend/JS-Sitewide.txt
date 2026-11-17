@@ -1,0 +1,90 @@
+Custom JS Code (After Body Open)
+Useful for third party integrations which require code to be placed after the opening <body> tag, such as Google Tag Manager. Requires opening and closing script tags.
+———————
+<script>
+document.addEventListener('click', function(e){
+  const a = e.target.closest('a[href]');
+  if (!a) return;
+  const u = new URL(a.href, location.origin);
+  if (!/^\/buy\//.test(u.pathname)) return;      // apply only to /buy/*
+  if (a.dataset.clicked === '1') { e.preventDefault(); return; }
+  a.dataset.clicked = '1';
+  a.style.pointerEvents = 'none';                 // no double clicks
+  // optionally show a tiny hint:
+  // a.insertAdjacentHTML('afterend','<span style="margin-left:8px">Redirecting…</span>');
+});
+</script>
+
+
+
+
+
+—————----
+Custom JS Code (Head)
+Please enter in any custom javascript you wish to add to the head of your pages. Requires opening and closing script tags.
+---------
+
+<!-- Script A: fonts (safe to paste first) -->
+<script>
+(function(){
+  var h = document.head;
+
+  // preconnects help the font arrive earlier
+  var pc1 = document.createElement('link');
+  pc1.rel = 'preconnect'; pc1.href = 'https://fonts.gstatic.com'; pc1.crossOrigin = '';
+  var pc2 = document.createElement('link');
+  pc2.rel = 'preconnect'; pc2.href = 'https://fonts.googleapis.com';
+
+  // load Inter with display=swap so text shows immediately
+  var css = document.createElement('link');
+  css.rel = 'stylesheet';
+  css.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap';
+
+  h.append(pc1, pc2, css);
+})();
+</script>
+
+
+<!-- Script B: your other head logic -->
+<script>
+(function(){
+  // Read session from cookie (subdomain-safe). LocalStorage is optional fallback.
+  function hasSession(){
+    const m = document.cookie.match(/(?:^|;\s*)aa_session=([^;]+)/);
+    if (m && m[1]) return true;
+    try { return !!localStorage.getItem('aa_session'); } catch(_) { return false; }
+  }
+
+  function updatePortalLinks(){
+    const links = document.querySelectorAll('.js-portal-link a, a.js-portal-link');
+    const signedIn = hasSession();
+    links.forEach(a => {
+      if (!a) return;
+      a.textContent = signedIn ? 'Your Tools' : 'Sign in';
+      a.href = '/portal';
+      a.rel = 'nofollow';
+      // reveal if using anti-flicker CSS
+      const li = a.closest('.js-portal-link');
+      if (li) li.classList.add('ready');
+    });
+  }
+
+  // Run on DOM ready & again after Salient clones header/menu
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', updatePortalLinks);
+  } else {
+    updatePortalLinks();
+  }
+  // Re-apply when the header/nav mutates (sticky header, mobile drawer, etc.)
+  const root = document.getElementById('header-outer') || document.body;
+  if (root && 'MutationObserver' in window){
+    new MutationObserver(() => updatePortalLinks())
+      .observe(root, { childList: true, subtree: true });
+  }
+  // Also re-check if the page regains focus (user just signed in elsewhere)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) updatePortalLinks();
+  });
+})();
+</script>
+

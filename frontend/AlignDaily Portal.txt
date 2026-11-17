@@ -1,0 +1,1304 @@
+PAGE: AlignDaily Portal
+
+SECTION: RAW HTML
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<div class="container">
+<div class="aligndaily-portal">
+  <div class="form-card">
+    <div id="progress-bar"></div>
+    <div class="step-tabs" id="step-tabs"></div>
+
+    <form id="align-form">
+      <div id="form-step"></div>
+
+      <div class="form-navigation">
+        <button id="prevBtn" class="navBtn" type="button">Back</button>
+
+        <!-- kept in markup; JS only updates text -->
+        <div id="gateMsg" aria-live="polite"></div>
+
+        <button id="nextBtn" class="navBtn" type="button">Next</button>
+      </div>
+
+      <div id="formStatus" role="status" aria-live="polite" style="margin-top:20px;"></div>
+    </form>
+  </div>
+</div>
+</div>
+
+
+
+
+
+SECTION: RAW JS 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("align-form");
+  const stepTabs = document.getElementById("step-tabs");
+  const nextBtn = document.getElementById("nextBtn");
+  const prevBtn = document.getElementById("prevBtn");
+  const formStep = document.getElementById("form-step");
+  const formStatus = document.getElementById("formStatus");
+
+  const FITNESS_DESC = {
+    "Beginner":    "New to movement or returning after a long break",
+    "Intermediate":"Consistent 2–4x/week for 6+ months",
+    "Advanced":    "Focused training style or 5+ sessions/week"
+  };
+
+  // ===== Screen Wake Lock (keep mobile from sleeping during generation) =====
+  let wakeLock = null;
+  let isGenerating = false; // <--- NEW: track when a plan is in flight
+
+  async function keepScreenAwake() {
+    if (!('wakeLock' in navigator)) {
+      // Older browsers just won't support it; no need to throw.
+      console.log('[AlignDaily] Wake Lock API not supported.');
+      return;
+    }
+    try {
+      if (wakeLock) return; // <--- NEW: avoid double-requesting
+      wakeLock = await navigator.wakeLock.request('screen');
+      console.log('[AlignDaily] Screen wake lock active');
+      wakeLock.addEventListener('release', () => {
+        console.log('[AlignDaily] Wake lock released (system)');
+        wakeLock = null;
+      });
+    } catch (err) {
+      console.log('[AlignDaily] Wake lock failed:', err.name, err.message);
+    }
+  }
+
+  async function releaseWakeLock() {
+    if (!wakeLock) return;
+    try {
+      await wakeLock.release();
+      console.log('[AlignDaily] Screen wake lock released');
+    } catch (err) {
+      console.log('[AlignDaily] Error releasing wake lock:', err.name, err.message);
+    } finally {
+      wakeLock = null;
+    }
+  }
+
+  // <--- NEW: re-acquire wake lock if user returns while generating
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && isGenerating) {
+      keepScreenAwake();
+    }
+  });
+
+  // highest completed step index — we keep it but allow free hopping
+  let completedIndex = 0;
+  let currentStep = 0;
+  const visitedSteps = new Set();
+  let formData = {};
+
+  // token helper (guarded)
+  if (typeof window.aaGetToken !== "function") {
+    window.aaGetToken = function(){
+      return localStorage.getItem("aa_session") ||
+             (document.cookie.match(/(?:^|;\s*)aa_session=([^;]+)/)||[])[1] || null;
+    };
+  }
+
+ // ===== Form definition =====
+const formSteps = [
+  {
+    title: "Basic Info",
+    fields: [
+      {
+        label:"Age",
+        name:"age",
+        type:"number",
+        min:10,
+        max:100,
+        inputmode:"numeric",
+        helper:"Used only to scale intensity and recovery."
+      },
+      {
+        label:"Gender",
+        name:"gender",
+        type:"radio",
+        options:["Male","Female","Nonbinary"],
+        helper:"Helps with general physiology patterns (hormones, strength, recovery) — not assumptions about you."
+      },
+      {
+        label:"Height",
+        name:"height",
+        type:"text",
+        placeholder:"e.g. 5'8, 68 inches, 170 cm",
+        maxlength:60,
+        helper:"Any clear format work. We’ll normalize it behind the scenes."
+      },
+      {
+        label:"Weight",
+        name:"weight",
+        type:"number",
+        placeholder:"lbs",
+        min:50,
+        max:500,
+        inputmode:"numeric",
+        helper:"Used only for safety and rough load estimates. Your number stays private."
+      }
+    ]
+  },
+
+  {
+    title: "Fitness",
+    fields: [
+      {
+        label: "Current Fitness Level",
+        name: "fitnessLevel",
+        type: "select",
+        options: ["Beginner","Intermediate","Advanced"],
+        helper: "Choose the level that feels most true for your current capacity, not your 'ideal' self."
+      },
+      {
+        label: "Primary Goal",
+        name: "goal",
+        type: "autocomplete",
+        multi: false,
+        maxlength: 60,
+        placeholder: "e.g. Lose body fat, strengthen core",
+        suggestions: [
+          "Build strength and muscle",
+          "Gently reduce body fat",
+          "Strengthen core and spine support",
+          "Increase flexibility and joint mobility",
+          "Ease joint or back discomfort",
+          "Rebuild capacity after injury or surgery",
+          "Support long-term bone-loading habits",
+          "Feel more steady energy through the day",
+          "Reduce stress and calm the nervous system",
+          "Improve posture awareness and alignment",
+          "Begin building an endurance base",
+          "Support metabolic health over time",
+          "Support steadier blood sugar patterns",
+          "Support hormone rhythms through movement and meals",
+          "Develop a realistic, repeatable workout rhythm"
+        ],
+        helper: "This 7-day plan is a starting pattern, not a medical treatment. Use natural language to describe what you most want this cycle to support."
+      },
+      {
+        label: "Workout Restrictions (must avoid)",
+        name: "workoutRestrictions",
+        type: "autocomplete",
+        multi: true,
+        maxlength: 60,
+        placeholder: "e.g. No jumping, bad knees, back pain",
+        suggestions: [
+          "No jumping / need low impact",
+          "Easily winded / breathing issues",
+          "Chronic fatigue / low energy",
+          "Bad knees",
+          "Knee replacement",
+          "Hip pain or tight hips",
+          "Lower back pain / sciatica",
+          "Shoulder injury or rotator cuff issues",
+          "Wrist strain / sensitive wrists",
+          "Neck tension",
+          "Arthritis or general joint pain",
+          "Limited mobility",
+          "Balance issues",
+          "Foot or ankle pain",
+          "No floor exercises",
+          "Avoid kneeling",
+          "Pregnancy-safe only",
+          "Post-surgery recovery"
+        ],
+        helper: "List things your body truly can’t tolerate right now. These become hard safety rails in your plan."
+      },
+      {
+        label: "Workout Preferences (style you enjoy)",
+        name: "workoutPreferences",
+        type: "autocomplete",
+        multi: true,
+        maxlength: 60,
+        placeholder: "e.g. Strength-focused, slow and controlled",
+        suggestions: [
+          "Strength-based sessions",
+          "Cardio intervals",
+          "Hybrid strength + cardio",
+          "Circuit style",
+          "Bodyweight-focused sessions",
+          "Core-focused sessions",
+          "Mobility-based sessions",
+          "Stretch + tone",
+          "Slow and controlled",
+          "Gentle, nervous-system friendly",
+          "Fast-paced / high energy",
+          "Yoga-inspired",
+          "Pilates-inspired",
+          "Functional movement patterns",
+          "Kettlebell-focused training",
+          "Outdoor-style conditioning (walks, hills, stairs)"
+        ],
+        helper: "Choose the feel of training you’re more likely to stick with. These guide the structure, pacing, and emphasis of your sessions."
+      }
+    ]
+  },
+
+  {
+    title: "Workout",
+    fields: [
+      {
+        label: "Workout Location",
+        name: "location",
+        type: "radio",
+        options: ["the gym","at home","outside"],
+        helper: "Where do you expect to train most often?"
+      },
+      {
+        label: "Equipment Available",
+        name: "equipment",
+        type: "autocomplete",
+        multi: true,
+        maxlength: 300,
+        placeholder: "e.g. None / Bodyweight only, kettlebells, yoga mat",
+        suggestions: [
+          "Dumbbells",
+          "Kettlebells",
+          "Resistance bands",
+          "Pull-up bar",
+          "Sliders",
+          "TRX straps",
+          "Treadmill",
+          "Stationary bike",
+          "Rowing machine",
+          "Barbell",
+          "Bench",
+          "Cable machine",
+          "Lat pulldown",
+          "Seated row",
+          "Leg press",
+          "Leg curl",
+          "Leg extension",
+          "Smith machine",
+          "Foam roller",
+          "Stability ball",
+          "Jump rope",
+          "Medicine ball",
+          "Yoga mat",
+          "Step platform",
+          "Plyo box",
+          "Ankle weights",
+          "None / Bodyweight only"
+        ],
+          helper: "If you train at home, list the specific tools you truly have. If you chose “the gym” above and aren’t sure what’s there, you can leave this blank — we’ll assume a normal, well-equipped gym with basic machines, benches, and dumbbells."
+      },
+      {
+        label: "Workout Days",
+        name: "workoutDays[]",
+        type: "checkbox-group",
+        options: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+        helper: "Choose the exact days you want workouts. Other days will be treated as true rest days."
+      },
+      {
+        label: "Workout Duration (per session)",
+        name: "duration",
+        type: "number",
+        placeholder: "minutes",
+        min: 10,
+        max: 120,
+        inputmode: "numeric",
+        helper: "How many minutes can you realistically give each workout day without overpromising?"
+      }
+    ]
+  },
+
+  {
+    title: "Nutrition",
+    fields: [
+      {
+        label:"Eating Pattern",
+        name:"eatingPattern",
+        type:"radio",
+        options:["Omnivore","Pescatarian","Vegetarian","Vegan"],
+        placeholder:"Choose one (required)",
+        required:true,
+        helper:"Choose what you’ll actually eat most days this week. Pescatarian = fish/seafood + plants, no poultry or red meat."
+      },
+      {
+        label: "Food Restrictions",
+        name: "foodRestrictions",
+        type: "autocomplete",
+        multi: true,
+        maxlength: 60,
+        placeholder: "e.g. Gluten-free, Dairy-free, Shellfish-free",
+        suggestions: [
+          "Gluten-free",
+          "Dairy-free",
+          "Egg-free",
+          "Soy-free",
+          "Nut-free",
+          "Shellfish-free",
+          "Seafood-free",
+          "Poultry-free",
+          "Beef-free",
+          "Pork-free",
+          "No red meat",
+          "No fried foods",
+          "Low FODMAP",
+          "Low sodium",
+          "Low histamine",
+          "No spicy foods",
+          "Nightshade-free",
+          "No added sugar",
+          "Artificial sweetener-free"
+        ],
+        helper:"Use this for firm NOs — allergies, intolerances, or anything your body genuinely cannot tolerate right now."
+      },
+      {
+        label: "Cuisine",
+        name: "cuisine",
+        type: "select",
+        options: [
+          "Health Conscious","American","American BBQ","Caribbean","Chinese","Ethiopian",
+          "French","Greek","Hawaiian","Indian","Italian","Japanese","Korean","Latin",
+          "Lowcountry","Mediterranean","Mexican","Middle Eastern","Raw Food","Soul Food",
+          "Spanish","Thai","Vietnamese"
+        ],
+        placeholder: "Pick one cuisine style",
+        required: true,
+        helper:"This sets the main flavor lane for the week. You can always order a new plan to try a different cuisine."
+      },
+      {
+        label: "Food Preferences (optional)",
+        name: "foodPreferences",
+        type: "autocomplete",
+        multi: true,
+        maxlength: 60,
+        placeholder: "e.g. High-protein, Quick prep meals, Minimal sugar",
+        suggestions: [
+          "High-protein focus",
+          "Whole-food meals",
+          "Quick prep (15–20 minutes)",
+          "Batch-cook friendly",
+          "Minimal cleanup",
+          "Comforting / cozy",
+          "Light & fresh",
+          "Anti-inflammatory leaning",
+          "Gut-friendly meals",
+          "Glucose-stabilizing",
+          "Lower sugar emphasis",
+          "Higher carbs around workouts",
+          "Warm, savory breakfasts",
+          "Cold, crisp meals",
+          "Lots of variety across the week",
+          "Happy to repeat simple meals",
+          "Plant-forward",
+          "Seafood-forward",
+          "No smoothies",
+          "Enjoys smoothies",
+          "Prefers bowls over plates"
+        ],
+        helper:"These are nice-to-have qualities. They influence the feel of your meals without acting as hard rules."
+      }
+    ]
+  },
+
+  {
+    title: "Keystone",
+    fields: [
+      {
+        label: "Include a daily Keystone to help with momentum?",
+        name: "keystone",
+        type: "select",
+        options: ["Yes","No"],
+        placeholder: "Choose Yes or No",
+        required: true,
+        helper:"If Yes, your plan includes guidance to keep you going."
+      }
+    ]
+  },
+
+  { title: "Review", fields: [] }
+]; // <-- close the formSteps array
+
+  // ===== Required fields / completion =====
+  const REQUIRED = new Set([
+    "age","gender","height","weight",
+    "fitnessLevel","goal",
+    "location","duration",
+    "workoutDays[]",
+    "eatingPattern","cuisine","keystone"
+  ]);
+
+
+  function isEmpty(val){
+    if (val == null) return true;
+    if (Array.isArray(val)) return val.length === 0;
+    return String(val).trim().length === 0;
+  }
+
+  function validateField(name, value) {
+    if (value == null) return null;
+    const s = String(value).trim();
+    if (!s) return null;
+
+    if (["age","weight","duration"].includes(name)) {
+      const num = parseInt(s, 10);
+      if (Number.isNaN(num)) return `${name} must be a number.`;
+      if (name === "weight"   && (num < 50 || num > 500)) return "Weight must be between 50–500 lbs.";
+      if (name === "duration" && (num < 10 || num > 120))  return "Duration must be between 10–120 minutes.";
+      if (name === "age"      && (num < 10 || num > 100))  return "Age must be between 10–100.";
+      return null;
+    }
+    if (s.length > 60) return `${name} must be under 60 characters.`;
+    return null;
+  }
+
+  function isFieldValid(name, value){
+    if (name === "workoutDays[]") {
+      return Array.isArray(value) && value.length > 0;
+    }
+    if (["age","weight","duration"].includes(name)) {
+      const err = validateField(name, value);
+      return !err;
+    }
+    const s = String(value||"").trim();
+    return s.length > 0 && s.length <= 60;
+  }
+
+  function computeCompletionPct(data){
+    const total = REQUIRED.size;
+    let valid = 0;
+    for (const name of REQUIRED) {
+      const v = data[name];
+      if (isFieldValid(name, v)) valid++;
+    }
+    return Math.round((valid / total) * 100);
+  }
+
+  // ===== Status helpers =====
+  function setStatus(msg, cls="status-warn"){
+    formStatus.textContent = msg || "";
+    formStatus.className = "";
+    if (msg) formStatus.classList.add("visible", cls);
+  }
+  function clearStatus(){ formStatus.textContent = ""; formStatus.className = ""; }
+
+  function clearFieldError(wrapper){
+    wrapper.classList.remove("has-error");
+    const err = wrapper.querySelector(".form-error");
+    if (err) err.remove();
+  }
+  function showFieldError(wrapper, msg){
+    clearFieldError(wrapper);
+    wrapper.classList.add("has-error");
+    const div = document.createElement("div");
+    div.className = "form-error";
+    div.textContent = msg;
+    wrapper.appendChild(div);
+  }
+
+  // ------ better error messages
+    function friendlyAlignDailyError(slug, code) {
+    switch (slug) {
+      case "not_logged_in":
+        return "Your access link is no longer active. Open your latest alchAlign email and use the link there to continue.";
+
+      case "no_credits":
+        return "You’ve used all available AlignDaily runs on this access link. You can purchase another plan to generate a new one.";
+
+      case "generation_failed":
+        return "We weren’t able to generate your AlignDaily plan this time. Please try again in a few minutes.";
+
+      case "empty_prompt":
+        return "We didn’t receive your inputs correctly. Please refresh the page and try submitting the form again.";
+
+      case "billing_failed":
+        return "We had trouble confirming your access just now. Please try again, and contact support if this keeps happening.";
+
+      case "network_error":
+        return "We couldn’t reach the AlignDaily service. Check your connection and try again.";
+
+      default:
+        if (code === 502 || code === 500) {
+          return "We hit a temporary issue while generating your plan. Please try again shortly.";
+        }
+        return "We couldn’t complete your AlignDaily plan. Please try again. If it keeps happening, contact support.";
+    }
+  }
+
+  // ===== Gate by credits (uses existing gateMsg) =====
+  (async function gate(){
+    const ENTITLEMENTS_URL = "https://redacted-pipedream-endpoint.invalid";
+    const PRODUCT = "aligndaily";
+    const note = document.getElementById("gateMsg");
+    const btn = nextBtn;
+    if (!btn) return;
+
+    btn.disabled = true;
+    if (note) note.textContent = "Checking access…";
+
+    const tok = aaGetToken();
+    if (!tok) {
+      if (note) note.textContent = "You’re not signed in. Open your email magic link to continue.";
+      btn.disabled = true; btn.setAttribute("aria-disabled","true"); btn.title = "Not signed in";
+      return;
+    }
+
+    try {
+      const r = await fetch(ENTITLEMENTS_URL, { headers:{ Authorization:"Bearer "+tok }});
+      if (!r.ok) throw 0;
+      const e = await r.json();
+      const credits = e?.credits?.aligndaily ?? e?.credits?.credits_aligndaily ?? 0;
+
+      if (credits > 0) {
+        btn.disabled = false; btn.removeAttribute("aria-disabled"); btn.title = "";
+        if (note) note.textContent = `You have ${credits} run${credits>1?"s":""} remaining.`;
+      } else {
+        btn.disabled = true; btn.setAttribute("aria-disabled","true"); btn.title = "No credits";
+        if (note) note.innerHTML = `No credits left. <a href="/${PRODUCT}">Buy another run</a>.`;
+      }
+    } catch {
+      btn.disabled = true; btn.setAttribute("aria-disabled","true"); btn.title = "Cannot verify";
+      if (note) note.textContent = "Could not verify access.";
+    }
+  })();
+
+  // ===== Tabs =====
+  function sectionIsComplete(section){
+    let complete = true;
+    section.fields.forEach(field => {
+      if (REQUIRED.has(field.name)) {
+        const val = formData[field.name];
+        if (!isFieldValid(field.name, val)) complete = false;
+      }
+      if (field.name === "workoutDays[]") {
+        const val = formData["workoutDays[]"];
+        if (REQUIRED.has("workoutDays[]") && !isFieldValid("workoutDays[]", val)) complete = false;
+      }
+    });
+    return complete;
+  }
+
+  function updateTabs() {
+    stepTabs.innerHTML = "";
+    formSteps.forEach((step, i) => {
+      const tab = document.createElement("div");
+      tab.className = "step-tab";
+      tab.textContent = step.title;
+
+      if (i === currentStep) {
+        tab.classList.add("active"); visitedSteps.add(i);
+      } else if (visitedSteps.has(i)) {
+        tab.classList.add("visited");
+      }
+
+      // ✓ when section's required fields are satisfied
+      if (step.fields.length && sectionIsComplete(step)) {
+        tab.classList.add("visited");
+        tab.insertAdjacentText("beforeend", " ✓");
+      }
+
+      // allow free hopping
+      tab.addEventListener("click", () => {
+        saveStepData();
+        currentStep = i;
+        renderStep();
+      });
+
+      stepTabs.appendChild(tab);
+    });
+  }
+
+  // ===== Data helpers =====
+  function saveStepData() {
+    try {
+      const step = formSteps[currentStep];
+      if (!step || !step.fields) return;
+
+      step.fields.forEach(field => {
+        const name = field.name;
+
+        if (field.type === "checkbox-group") {
+          const selected = [...document.querySelectorAll(`input[name="${CSS.escape(name)}"]:checked`)];
+          formData[name] = selected.map(el => el.value);
+
+        } else if (field.type === "radio") {
+          const chosen = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+          formData[name] = chosen ? chosen.value : "";
+
+        } else {
+          const input = document.querySelector(`[name="${CSS.escape(name)}"]`);
+          if (!input) return;
+
+          if (field.type === "autocomplete") {
+            let value = input.value.trim();
+            if (value.endsWith(",")) value = value.slice(0, -1);
+            const items = value.split(",").map(v => v.trim()).filter(Boolean);
+            formData[name] = field.multi ? items : (items[0] || "");
+          } else {
+            formData[name] = (input.value || "").trim();
+          }
+        }
+      });
+
+      // optional email from review
+      const emailField = document.querySelector('input[name="email"]');
+      if (emailField) {
+        const emailValue = emailField.value.trim();
+        if (emailValue) formData.email = emailValue;
+      }
+    } catch {}
+  }
+
+  function getFinalFormData() {
+    const data = {};
+    Object.entries(formData).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        data[key] = value.map(v => String(v).trim()).filter((v,i,arr) => v && arr.indexOf(v) === i);
+      } else if (typeof value === "string") {
+        data[key] = value.trim();
+      } else {
+        data[key] = value;
+      }
+    });
+    return data;
+  }
+
+  // ===== Rendering =====
+  function wireLiveClear(inputEl, groupEl){
+    const clear = () => clearFieldError(groupEl);
+    inputEl.addEventListener("input", clear);
+    inputEl.addEventListener("change", clear);
+  }
+
+  function renderStep() {
+    formStep.innerHTML = "";
+    updateTabs();
+
+    const nav = document.querySelector('.form-navigation');
+    if (nav) nav.classList.toggle('back-hidden', currentStep === 0);
+
+    const step = formSteps[currentStep];
+    const header = document.createElement("h2");
+    header.className = "section-header";
+    header.textContent = step.title;
+    formStep.appendChild(header);
+
+    if (step.fields.length === 0) {
+      // ===== REVIEW =====
+      const review = document.createElement("div");
+      review.className = "review-container";
+
+      formSteps.forEach(s => {
+        if (s.fields.length === 0) return;
+
+        const section = document.createElement("div");
+        section.className = "review-section";
+
+        // header
+        const head = document.createElement("header");
+        const title = document.createElement("h3");
+        title.textContent = s.title;
+        head.appendChild(title);
+
+        // missing count
+        let missingCount = 0;
+        s.fields.forEach(field => {
+          const v = formData[field.name];
+          const missing = (
+            (field.type === "checkbox-group" && REQUIRED.has(field.name) && (!Array.isArray(v) || v.length === 0)) ||
+            (REQUIRED.has(field.name) && isEmpty(v))
+          );
+          if (missing) missingCount++;
+        });
+        if (missingCount > 0) {
+          const badge = document.createElement("span");
+          badge.className = "missing-badge";
+          badge.textContent = `${missingCount} required ${missingCount>1?"fields":"field"} missing`;
+          head.appendChild(badge);
+        }
+
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "edit-chip";
+        chip.textContent = "Edit";
+        chip.addEventListener("click", (e) => {
+          e.preventDefault();
+          currentStep = formSteps.indexOf(s);
+          renderStep();
+          const firstField = s.fields[0]?.name;
+          if (firstField) {
+            const target = document.querySelector(`[name="${CSS.escape(firstField)}"]`);
+            if (target) target.focus();
+          }
+        });
+        head.appendChild(chip);
+
+        section.appendChild(head);
+
+        // rows
+        s.fields.forEach(field => {
+          const row = document.createElement("p");
+          row.className = "review-row";
+          const label = document.createElement("strong");
+          label.textContent = field.label + ": ";
+          row.appendChild(label);
+
+          let text;
+          if (field.type === "checkbox-group") {
+            const arr = formData[field.name] || [];
+            text = (Array.isArray(arr) && arr.length) ? arr.join(", ") : "—";
+          } else {
+            const val = formData[field.name];
+            text = Array.isArray(val) ? val.join(", ") : (val || "—");
+          }
+
+          if ((field.type === "checkbox-group" && REQUIRED.has(field.name) && (!Array.isArray(formData[field.name]) || formData[field.name].length === 0)) ||
+              (REQUIRED.has(field.name) && isEmpty(formData[field.name]))) {
+            row.classList.add("is-missing");
+          }
+
+          row.appendChild(document.createTextNode(text));
+          section.appendChild(row);
+        });
+
+        review.appendChild(section);
+      });
+
+      formStep.appendChild(review);
+
+      // Optional email input
+      const emailWrapper = document.createElement("div");
+      emailWrapper.style.marginTop = "32px";
+      emailWrapper.className = "form-group";
+
+      const emailLabel = document.createElement("label");
+      const lr = document.createElement("span");
+      lr.className = "label-row";
+      lr.textContent = "📩 Email a copy? (optional)";
+      emailLabel.appendChild(lr);
+      emailWrapper.appendChild(emailLabel);
+
+      const emailInput = document.createElement("input");
+      emailInput.type = "email";
+      emailInput.name = "email";
+      emailInput.placeholder = "you@example.com";
+      emailInput.classList.add("review-email-input");
+      emailWrapper.appendChild(emailInput);
+
+      formStep.appendChild(emailWrapper);
+
+    } else {
+      // ===== NORMAL STEP FIELDS =====
+      step.fields.forEach(field => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "form-group";
+
+        // label with required dot
+        const label = document.createElement("label");
+        const row = document.createElement("span");
+        row.className = "label-row";
+        const title = document.createElement("span");
+        title.textContent = field.label;
+        row.appendChild(title);
+
+        const isRequired = REQUIRED.has(field.name) || field.name === "workoutDays[]";
+        if (isRequired) {
+          const dot = document.createElement("span");
+          dot.className = "req-dot";
+          dot.setAttribute("aria-hidden","true");
+          row.appendChild(dot);
+          label.setAttribute("aria-required","true");
+        }
+
+        // tiny hint on tricky fields
+        if (field.name === "height") {
+          const hint = document.createElement("span");
+          hint.className = "hint";
+          hint.textContent = "e.g., 5'8 or 170 cm";
+          row.appendChild(hint);
+        }
+
+        label.appendChild(row);
+        wrapper.appendChild(label);
+
+        // helper text under label (if defined)
+        if (field.helper) {
+          const helper = document.createElement("p");
+          helper.className = "field-helper";
+          helper.textContent = field.helper;
+          wrapper.appendChild(helper);
+        }
+
+        // field types
+        if (field.type === "select") {
+          const select = document.createElement("select");
+          select.name = field.name;
+
+          // placeholder
+          if (field.placeholder) {
+            const placeholderOpt = document.createElement("option");
+            placeholderOpt.value = "";
+            placeholderOpt.textContent = field.placeholder;
+            placeholderOpt.disabled = true;
+            placeholderOpt.selected = !formData[field.name];
+            select.appendChild(placeholderOpt);
+          }
+
+          field.options.forEach(opt => {
+            const option = document.createElement("option");
+            option.value = opt;
+            option.textContent = opt;
+            if (field.name === "fitnessLevel" && FITNESS_DESC[opt]) {
+              option.title = FITNESS_DESC[opt];
+            }
+            select.appendChild(option);
+          });
+
+          select.value = formData[field.name] || "";
+          if (isRequired) select.setAttribute("required", "true");
+          wireLiveClear(select, wrapper);
+          wrapper.appendChild(select);
+
+          if (field.name === "fitnessLevel") {
+            const note = document.createElement("div");
+            note.className = "field-note";
+            const setNote = () => { note.textContent = FITNESS_DESC[select.value] || ""; };
+            setNote();
+            select.addEventListener("change", setNote);
+            wrapper.appendChild(note);
+            const noteId = "fitness-note";
+            note.id = noteId;
+            select.setAttribute("aria-describedby", noteId);
+          }
+
+        } else if (field.type === "radio") {
+          const groupName = field.name;
+
+          field.options.forEach(opt => {
+            const id = `${groupName}-${opt.replace(/\s+/g,"-").toLowerCase()}`;
+
+            const radio = document.createElement("input");
+            radio.type = "radio";
+            radio.name = groupName;
+            radio.id = id;
+            radio.value = opt;
+            if (formData[groupName] === opt) radio.checked = true;
+
+            const lbl = document.createElement("label");
+            lbl.setAttribute("for", id);
+            lbl.className = "radio-label";
+            lbl.textContent = opt;
+
+            const line = document.createElement("div");
+            line.className = "radio-option";
+            line.appendChild(radio);
+            line.appendChild(lbl);
+            wrapper.appendChild(line);
+          });
+
+          wrapper.querySelectorAll(`input[name="${CSS.escape(groupName)}"]`)
+            .forEach(r => {
+              wireLiveClear(r, wrapper);
+              r.addEventListener("change", () => clearFieldError(wrapper));
+            });
+
+        } else if (field.type === "checkbox-group") {
+          field.options.forEach(opt => {
+            const box = document.createElement("input");
+            box.type = "checkbox";
+            box.name = field.name;
+            box.value = opt;
+            if (formData[field.name]?.includes(opt)) box.checked = true;
+
+            const lbl = document.createElement("label");
+            lbl.appendChild(box);
+            lbl.appendChild(document.createTextNode(" " + opt));
+            wrapper.appendChild(lbl);
+          });
+          const warning = document.createElement("div");
+          warning.id = "day-warning";
+          warning.textContent = "Please select at least one workout day.";
+          warning.style.display = "none";
+          warning.style.color = "#d30000";
+          warning.style.fontSize = "0.9rem";
+          warning.style.marginTop = "8px";
+          wrapper.appendChild(warning);
+
+          wrapper.querySelectorAll(`input[name="${field.name}"]`)
+            .forEach(cb => cb.addEventListener("change", () => clearFieldError(wrapper)));
+
+        } else if (field.type === "autocomplete") {
+          const container = document.createElement("div");
+          container.className = "autocomplete-container";
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.name = field.name;
+          input.placeholder = field.placeholder || "";
+          input.autocomplete = "off";
+          input.maxLength = field.maxlength || 60;
+          input.value = field.multi ? (Array.isArray(formData[field.name]) ? formData[field.name].join(", ") : "") : (formData[field.name] || "");
+          if (isRequired) input.setAttribute("required","true");
+          wireLiveClear(input, wrapper);
+
+          const suggestionBox = document.createElement("div");
+          suggestionBox.className = "suggestions";
+
+          function addValue(value) {
+            const raw = input.value.split(",");
+            raw[raw.length - 1] = value;
+            const cleaned = raw.map(p => p.trim()).filter((v,i,arr) => v && arr.indexOf(v) === i);
+            input.value = field.multi ? (cleaned.join(", ") + ", ") : value;
+            suggestionBox.innerHTML = "";
+          }
+
+          let activeIndex = -1;
+          function renderSuggestions() {
+            const raw = input.value.split(",").pop().trim();
+            const current = raw.toLowerCase();
+            suggestionBox.innerHTML = "";
+            activeIndex = -1;
+
+            const all = field.suggestions || [];
+            // If nothing typed yet, show everything. Otherwise filter.
+            const matches = current
+              ? all.filter(s => s.toLowerCase().includes(current))
+              : all.slice();
+
+            if (!matches.length) {
+              container.classList.remove("open");
+              return;
+            }
+
+            matches.forEach((suggestion) => {
+              const item = document.createElement("div");
+              item.textContent = suggestion;
+              item.className = "suggestion-item";
+              item.addEventListener("click", () => {
+                addValue(suggestion);
+                container.classList.remove("open");
+              });
+              suggestionBox.appendChild(item);
+            });
+
+            container.classList.add("open");
+          }
+
+          // Show suggestions on focus and while typing
+          input.addEventListener("focus", renderSuggestions);
+          input.addEventListener("input", renderSuggestions);
+
+          input.addEventListener("keydown", e => {
+            const items = suggestionBox.querySelectorAll(".suggestion-item");
+            if (e.key === "ArrowDown") {
+              e.preventDefault(); if (!items.length) return;
+              activeIndex = (activeIndex + 1) % items.length;
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault(); if (!items.length) return;
+              activeIndex = (activeIndex - 1 + items.length) % items.length;
+            } else if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              if (items.length > 0 && activeIndex >= 0) addValue(items[activeIndex].textContent);
+              else {
+                const raw = input.value.split(",").pop().trim();
+                if (raw) addValue(raw);
+              }
+              return;
+            }
+            items.forEach((item, i) => item.classList.toggle("active", i === activeIndex));
+            if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].scrollIntoView({ block:"nearest", behavior:"smooth" });
+          });
+
+          container.appendChild(input);
+          container.appendChild(suggestionBox);
+          wrapper.appendChild(container);
+
+        } else {
+          const input = document.createElement("input");
+          input.type = field.type;
+          if (field.min !== undefined) input.min = field.min;
+          if (field.max !== undefined) input.max = field.max;
+          if (field.maxlength) input.maxLength = field.maxlength;
+          if (field.pattern) input.pattern = field.pattern;
+          if (field.inputmode) input.setAttribute("inputmode", field.inputmode);
+          input.name = field.name;
+          input.placeholder = field.placeholder || "";
+          input.value = formData[field.name] || "";
+          if (isRequired) input.setAttribute("required","true");
+          wireLiveClear(input, wrapper);
+          wrapper.appendChild(input);
+        }
+
+        formStep.appendChild(wrapper);
+      });
+    }
+
+    const focusable = formStep.querySelectorAll("input, select, textarea");
+    focusable.forEach((el, i) => {
+      el.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const next = focusable[i + 1];
+          if (next) next.focus();
+          else if (nextBtn && !nextBtn.disabled) nextBtn.click();
+        }
+      });
+    });
+
+    const bar = document.getElementById("progress-bar");
+    if (bar) {
+      const pct = computeCompletionPct(formData);
+      bar.style.setProperty("--pct", pct + "%");
+    }
+
+    const isFinal = (currentStep === formSteps.length - 1);
+    nextBtn.textContent = isFinal ? "Generate Plan" : "Next";
+    nextBtn.classList.toggle("final-step", isFinal);
+    nextBtn.classList.remove("loading");
+  }
+
+  // === Add below renderStep() ===
+  // === Autocomplete guards: only handle closing ===
+  function wireAutocompleteGuards() {
+    const containers = Array.from(document.querySelectorAll(".autocomplete-container"));
+
+    function closeAll(except = null) {
+      containers.forEach(c => {
+        if (c !== except) {
+          c.classList.remove("open");
+          const box = c.querySelector(".suggestions");
+          if (box) box.innerHTML = "";
+        }
+      });
+    }
+
+    // Click anywhere outside closes all
+    document.addEventListener("click", (e) => {
+      const inside = e.target.closest(".autocomplete-container");
+      if (!inside) closeAll();
+    });
+
+    // Scroll inside the card closes all
+    const card = document.querySelector(".form-card");
+    if (card) {
+      card.addEventListener("scroll", () => closeAll(), { passive: true });
+    }
+
+    // Focusing any non-autocomplete field closes all
+    Array.from(document.querySelectorAll("input,select,textarea"))
+      .filter(el => !el.closest(".autocomplete-container"))
+      .forEach(el => el.addEventListener("focus", () => closeAll()));
+  }
+
+  const _origRenderStep = renderStep;
+  renderStep = function(){
+    _origRenderStep();
+    wireAutocompleteGuards();
+
+    const tabsWrap = document.getElementById("step-tabs");
+    if (tabsWrap) {
+      const total = Array.from(tabsWrap.children).reduce((w,c)=>w+c.getBoundingClientRect().width,0);
+      tabsWrap.classList.toggle("can-center", total + 8 < tabsWrap.getBoundingClientRect().width);
+    }
+  };
+
+  // ===== Validation (inline, no alerts) =====
+  function validateFormData() {
+    const step = formSteps[currentStep];
+    if (!step?.fields?.length) return true;
+
+    let ok = true;
+    formStep.querySelectorAll(".form-group").forEach(g => clearFieldError(g));
+
+    step.fields.forEach(field => {
+      const name = field.name;
+      const group = [...formStep.querySelectorAll(".form-group")]
+        .find(g => g.querySelector(`[name="${CSS.escape(name)}"]`) || (field.type==="checkbox-group" && g.querySelectorAll(`input[name="${CSS.escape(name)}"]`).length));
+
+      if (field.type === "checkbox-group") return;
+
+      if (field.type === "radio") {
+        const chosen = formStep.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+        if (REQUIRED.has(name) && !chosen) {
+          ok = false; if (group) showFieldError(group, "This field is required.");
+        }
+        return;
+      }
+
+      const input = formStep.querySelector(`[name="${CSS.escape(name)}"]`);
+      if (!input) return;
+
+      const raw = input.value.trim();
+
+      if (REQUIRED.has(name) && isEmpty(raw)) {
+        ok = false; if (group) showFieldError(group, "This field is required."); return;
+      }
+
+      const err = validateField(name, raw);
+      if (err) { ok = false; if (group) showFieldError(group, err); }
+    });
+
+    if (!ok) {
+      setStatus("Please fix the highlighted fields to continue.", "status-warn");
+      const first = formStep.querySelector(".form-group.has-error input, .form-group.has-error select, .form-group.has-error textarea");
+      if (first) first.focus({ preventScroll:false });
+    } else {
+      clearStatus();
+    }
+    return ok;
+  }
+
+  // ===== Navigation =====
+  prevBtn.addEventListener("click", () => {
+    if (currentStep > 0) {
+      saveStepData();
+      currentStep--;
+      renderStep();
+    }
+  });
+
+  nextBtn.addEventListener("click", async () => {
+    if (nextBtn.disabled) return;
+
+    if (formSteps[currentStep].fields.length && !validateFormData()) return;
+
+    if (formSteps[currentStep].title === "Workout") {
+      const days = document.querySelectorAll('input[name="workoutDays[]"]:checked');
+      const warning = document.querySelector("#day-warning");
+      if (days.length === 0) {
+        if (warning) warning.style.display = "block";
+        return;
+      } else if (warning) {
+        warning.style.display = "none";
+      }
+    }
+
+    saveStepData();
+
+    if (currentStep < formSteps.length - 1) {
+      completedIndex = Math.max(completedIndex, currentStep + 1);
+      currentStep++;
+      renderStep();
+      return;
+    }
+
+    if (formSteps[currentStep].title === "Review") {
+      const missing = [];
+      for (const name of REQUIRED) {
+        const val = formData[name];
+        if (!isFieldValid(name, val)) missing.push(name);
+      }
+      if (missing.length > 0) {
+        setStatus("Some required fields are missing. Tap the Edit chip in any highlighted section.", "status-warn");
+        const target = document.querySelector(".review-section .missing-badge");
+        if (target) target.scrollIntoView({ behavior:"smooth", block:"center" });
+        return;
+      }
+    }
+
+    const isFinal = (currentStep === formSteps.length - 1);
+    if (isFinal) {
+      nextBtn.disabled = true;
+      nextBtn.classList.add("loading");
+    }
+
+    const stepsMsg = [
+      "Reading your inputs...",
+      "Designing your workout...",
+      "Building your meal plans...",
+      "Compiling your grocery list...",
+      "It can take up to 2 minutes...",
+      "Almost done..."
+    ];
+    let i = 0;
+    formStatus.style.display = "block";
+    formStatus.innerText = stepsMsg[i];
+    const interval = setInterval(() => {
+      i = (i + 1) % stepsMsg.length;
+      formStatus.innerText = stepsMsg[i];
+    }, 3500);
+
+    const selected = formData["workoutDays[]"];
+    if (!Array.isArray(selected) || selected.length === 0) {
+      clearInterval(interval);
+      formStatus.textContent = "Please select at least one workout day before submitting.";
+      formStatus.style.display = "block";
+      formStatus.style.color = "#d30000";
+      nextBtn.disabled = false;
+      nextBtn.classList.remove("loading");
+      return;
+    }
+
+    try {
+      isGenerating = true;                 // <--- NEW: mark as in-flight
+      await keepScreenAwake();             // 🔒 Keep the screen awake while the plan is generating
+
+      const payload = getFinalFormData();
+      const aa = aaGetToken();
+      const response = await fetch("https://redacted-pipedream-endpoint.invalid", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(aa ? { Authorization: "Bearer " + aa } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+
+            const result = await response.json();
+
+      const hasPlan    = typeof result?.plan === "string" && result.plan.trim().length > 0;
+      const apiSuccess = result && result.success === true;
+      const apiCode    = typeof result?.code === "number" ? result.code : response.status;
+      const apiError   = result?.error || (response.ok ? (hasPlan ? null : "missing_plan") : "unexpected_error");
+
+      if (!response.ok || (!apiSuccess && !hasPlan)) {
+        console.error("AlignDaily backend error:", {
+          httpStatus: response.status,
+          apiCode,
+          apiError,
+          result,
+        });
+
+        const friendly = friendlyAlignDailyError(apiError, apiCode);
+        clearInterval(interval);
+        setStatus(`⚠️ ${friendly}`, "status-warn");
+
+        nextBtn.disabled = false;
+        nextBtn.textContent = "Generate Plan";
+        nextBtn.classList.remove("loading");
+        return;
+      }
+
+      if (!hasPlan) {
+        // safety net: success=true but no plan string
+        console.error("AlignDaily: success but no plan returned:", result);
+        const friendly = friendlyAlignDailyError("generation_failed", apiCode);
+        clearInterval(interval);
+        setStatus(`⚠️ ${friendly}`, "status-warn");
+
+        nextBtn.disabled = false;
+        nextBtn.textContent = "Generate Plan";
+        nextBtn.classList.remove("loading");
+        return;
+      }
+
+      // Success: persist + redirect
+      localStorage.setItem("aligndailyPlan", result.plan);
+      window.location.href = "/your-plan";
+
+      } catch (err) {
+      console.error("AlignDaily plan generation error:", err);
+      const friendly = friendlyAlignDailyError("network_error");
+      clearInterval(interval);
+      setStatus(`⚠️ ${friendly}`, "status-warn");
+      nextBtn.disabled = false;
+      nextBtn.textContent = "Generate Plan";
+      nextBtn.classList.remove("loading");
+    } finally {
+      isGenerating = false;                // <--- NEW: clear in-flight flag
+      clearInterval(interval);
+      await releaseWakeLock();             // ✅ Always release wake lock
+    }
+  });
+
+  renderStep();
+});
+</script>
+

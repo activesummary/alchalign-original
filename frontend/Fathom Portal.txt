@@ -1,0 +1,295 @@
+PAGE: FATHOM PORTAL
+
+
+
+RAW HTML:
+<!-- Updated Fathom Form Layout with Responsive Width, Larger Glyph, and Improved Font Sizes -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<div class="fathom-form-wrap">
+  <div class="fathom-form-card neo">
+    <div class="fathom-form-head">
+      <div class="fathom-icon">❂</div>
+      <h1>Translate a Symptom</h1>
+    </div>
+    <div class="fathom-form-body">
+      <form id="fathom-form" novalidate>
+
+        <!-- Symptom Input as textarea -->
+        <div class="form-block">
+          <label for="symptom">Symptom</label>
+          <p class="helper">Describe one symptom + when it appears (time, place, or activity).</p>
+          <textarea id="symptom" name="symptom" class="input neo" placeholder="examples: tight throat when speaking, chest heaviness at night, dry skin" maxlength="200"></textarea>
+          <div class="chips">
+            <span class="chip neo">tight throat when speaking</span>
+            <span class="chip neo">pressure behind eyes</span>
+            <span class="chip neo">2pm energy crash</span>
+            <span class="chip neo">restless sleep, 3–4am wake-ups</span>
+            <span class="chip neo">digestive issues</span>
+          </div>
+        </div>
+
+        <!-- Optional Context -->
+        <div class="form-block">
+          <label for="context">Optional Context</label>
+          <textarea id="context" name="context" class="input neo" placeholder="Timeline, triggers, or patterns you’ve noticed" maxlength="200"></textarea>
+        </div>
+
+        <!-- Email -->
+        <div class="form-block">
+          <label class="inline-label" for="email"><span class="icon">📬</span> Email a copy? (optional)</label>
+          <input id="email" name="email" type="email" class="input neo" placeholder="you@example.com" autocomplete="email" inputmode="email">
+          <p class="helper">We’ll email the finished insight when it’s ready.</p>
+        </div>
+
+        <!-- Submit -->
+        <div class="form-block">
+          <button id="submitBtn" type="submit" class="decode-btn">Translate</button>
+          <div id="decode-status" class="status-message" aria-live="polite"></div>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+RAW JS:
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // --- CONFIG: your Pipedream entitlements endpoint ---
+  const ENTITLEMENTS_URL = "https://redacted-pipedream-endpoint.invalid";
+  const PRODUCT = "fathom";
+
+  const form = document.getElementById("fathom-form");
+  const symptomInput = document.getElementById("symptom");
+  const contextInput = document.getElementById("context");
+  const emailInput = document.getElementById("email");
+  const submitBtn = document.querySelector(".decode-btn");
+  const statusEl = document.getElementById("decode-status");
+
+  // --- WAKE LOCK (prevent screen sleep during decode) ---
+  let wakeLock = null;
+  let isDecoding = false;
+
+  async function acquireWakeLock() {
+    if (!("wakeLock" in navigator)) return;
+    try {
+      if (wakeLock) return; // already held
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => {
+        wakeLock = null;
+      });
+    } catch (err) {
+      console.warn("[Fathom] Wake Lock request failed:", err);
+    }
+  }
+
+  async function releaseWakeLock() {
+    try {
+      if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    } catch (err) {
+      console.warn("[Fathom] Wake Lock release failed:", err);
+    }
+  }
+
+  // Re-acquire wake lock if user returns while a decode is in flight
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && isDecoding) {
+      acquireWakeLock();
+    }
+  });
+
+  // --- tiny helpers ---
+  function setStatus(msg, type="info"){
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.className = `status-message ${type}`;
+    statusEl.style.display = "block";
+  }
+  function getToken(){
+    return localStorage.getItem("aa_session") ||
+           (document.cookie.match(/(?:^|;\s*)aa_session=([^;]+)/)||[])[1] || null;
+  }
+
+ // ---- better error messages
+  function friendlyFathomError(slug, code) {
+    switch (slug) {
+      case "not_logged_in":
+        return "Your access link is no longer active. Open your latest alchAlign email and use the link there to translate again.";
+
+      case "no_credits":
+        return "You’ve used all available Fathom credits on this access link. You can purchase another run to continue.";
+
+      case "generation_failed":
+        return "We weren’t able to complete this Fathom translation. Please try again in a few minutes.";
+
+      case "empty_prompt":
+        return "We didn’t receive your symptom/context correctly. Please refresh the page and submit again.";
+
+      case "billing_failed":
+        return "We had trouble confirming your access just now. Please try again, and contact support if this keeps happening.";
+
+      case "network_error":
+        return "We couldn’t reach the Fathom service. Check your connection and try again.";
+
+      default:
+        if (code === 502 || code === 500) {
+          return "We hit a temporary issue while generating your Fathom card. Please try again shortly.";
+        }
+        return "We couldn’t complete this Fathom translation. Please try again. If it keeps happening, contact support.";
+    }
+  }
+
+  // --- GATE: show runs + enable/disable button (non-intrusive; submit handler untouched) ---
+  let gateMsg = document.getElementById("gateMsg");
+  if (!gateMsg && submitBtn) {
+    gateMsg = document.createElement("div");
+    gateMsg.id = "gateMsg";
+    gateMsg.style.marginTop = "8px";
+    submitBtn.insertAdjacentElement("afterend", gateMsg);
+  }
+
+  async function gateAccess(){
+    if (!submitBtn || !gateMsg) return;
+
+    submitBtn.disabled = true; submitBtn.setAttribute("aria-disabled","true");
+    submitBtn.title = "Checking access…";
+    gateMsg.textContent = "Checking access…";
+
+    const tok = getToken();
+    if (!tok) {
+      // No resend here; keep it minimal and locked
+      gateMsg.textContent = "You’re not signed in. Open your email magic link to continue.";
+      submitBtn.disabled = true; submitBtn.setAttribute("aria-disabled","true"); submitBtn.title = "Not signed in";
+      return;
+    }
+
+    try {
+      const r = await fetch(ENTITLEMENTS_URL, { headers: { Authorization: "Bearer " + tok }});
+      if (!r.ok) throw new Error("entitlements_error");
+      const e = await r.json();
+      const credits = (e.credits && e.credits[PRODUCT]) || 0;
+
+      if (credits > 0) {
+        submitBtn.disabled = false; submitBtn.removeAttribute("aria-disabled"); submitBtn.title = "";
+        gateMsg.textContent = `You have ${credits} run${credits>1?"s":""} remaining.`;
+      } else {
+        submitBtn.disabled = true; submitBtn.setAttribute("aria-disabled","true"); submitBtn.title = "No credits";
+        // Buy-only copy (no portal, no resend)
+        gateMsg.innerHTML = `No credits left. <a href="/${PRODUCT}">Buy another run</a>.`;
+      }
+    } catch (err) {
+      console.error("[Fathom] entitlements failed:", err);
+      // Silent failure: don’t offer resend here
+      gateMsg.textContent = "Could not verify access.";
+      submitBtn.disabled = true; submitBtn.setAttribute("aria-disabled","true"); submitBtn.title = "Cannot verify";
+    }
+  }
+
+  // ---- SUBMIT HANDLER (unchanged flow; just includes Authorization if present) ----
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const symptom = symptomInput.value.trim();
+    const context = contextInput?.value.trim();
+    const email = emailInput?.value.trim();
+
+    if (!symptom){
+      setStatus("Please describe a symptom to translate.", "error");
+      symptomInput.focus();
+      return;
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)){
+      setStatus("Please enter a valid email or leave blank.", "error");
+      emailInput.focus();
+      return;
+    }
+
+    const originalHTML = submitBtn.innerHTML;
+
+    submitBtn.disabled = true;
+    submitBtn.classList.add("pulsing");
+    submitBtn.setAttribute("aria-busy", "true");
+    submitBtn.innerHTML = "Processing...";
+
+    setStatus("⏳ Processing your insight...", "info");
+
+    try {
+      isDecoding = true;
+      await acquireWakeLock();
+
+      const aa = getToken();
+      const res = await fetch("https://redacted-pipedream-endpoint.invalid", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(aa ? { Authorization: "Bearer " + aa } : {})
+        },
+        body: JSON.stringify({
+          symptom: symptom,
+          context: context || "",
+          email: email || ""
+        })
+      });
+
+       let data;
+      try { data = await res.json(); } catch { data = {}; }
+      window.__lastDecodeData = data;
+
+      const apiSuccess = data && data.success === true;
+      const apiCode    = typeof data?.code === "number" ? data.code : res.status;
+      const apiError   = data?.error || (res.ok ? null : "unexpected_error");
+      const hasCard    = !!data?.card;
+
+      if (!res.ok || !apiSuccess || !hasCard) {
+        console.error("Fathom backend error:", {
+          httpStatus: res.status,
+          apiCode,
+          apiError,
+          data,
+        });
+        const friendly = friendlyFathomError(apiError, apiCode);
+        setStatus(`❌ ${friendly}`, "error");
+        return;
+      }
+
+
+      const cardData = {
+        card: data.card,
+        symptom,
+        processedAt: new Date().toISOString()
+      };
+      localStorage.setItem("fathomCard", JSON.stringify(cardData));
+
+      setStatus("✅ Insight complete. Redirecting...", "success");
+      setTimeout(() => {
+        window.location.href = "/fathom-message";
+      }, 1000);
+
+      } catch (err) {
+      console.error("Fathom error:", err);
+      const friendly = friendlyFathomError("network_error");
+      setStatus(`❌ ${friendly}`, "error");
+      } finally {
+      isDecoding = false;
+      await releaseWakeLock();
+
+      // do not modify background here — CSS controls all states
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("pulsing");
+      submitBtn.removeAttribute("aria-busy");
+      submitBtn.innerHTML = originalHTML;
+      gateAccess(); // refresh credit display
+    }
+  });
+
+  // Kick off gating on load
+  gateAccess();
+});
+</script>

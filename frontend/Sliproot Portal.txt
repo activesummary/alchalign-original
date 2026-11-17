@@ -1,0 +1,354 @@
+PAGE: SLIPROOT PORTAL
+
+
+RAW HTML:
+<div class="sliproot-wrap">
+  <div class="sliproot-card">
+    <div class="sr-head">
+<div class="sr-glyph" aria-hidden="true">
+  <!-- Sliproot minimal core emblem (Moss & Mist) -->
+  <svg class="sr-sprig breathe"
+       xmlns="http://www.w3.org/2000/svg"
+       viewBox="0 0 96 96"
+       width="160"
+       height="160"
+       role="img"
+       aria-label="Sliproot core emblem">
+    <g fill="none"
+       stroke="#A7C5B6"
+       stroke-width="4"
+       stroke-linecap="round"
+       stroke-linejoin="round">
+      <circle cx="48" cy="48" r="20" />
+      <circle cx="48" cy="48" r="4" fill="#A7C5B6" />
+    </g>
+  </svg>
+</div>
+
+  <h1>Unmask a Recurring Pattern</h1>
+  <p class="sr-sub">Describe one behavior or stuck place you want to understand.</p>
+</div>
+
+    <div class="sr-body">
+      <form id="sliproot-form" novalidate>
+        <!-- Pattern -->
+        <div class="sr-row">
+          <label for="pattern">Pattern / Behavior</label>
+          <textarea id="pattern" name="pattern" class="sr-input" placeholder="e.g., Avoiding important conversations until tension builds; Procrastinating high-stakes tasks until the last minute; Saying yes, then resenting it."></textarea>
+          <div class="sr-chips" aria-hidden="true">
+            <span class="sr-chip">Procrastinating big tasks</span>
+            <span class="sr-chip">Conflict loop with partner</span>
+            <span class="sr-chip">Doom-scrolling instead of sleeping</span>
+            <span class="sr-chip">Saying yes → later resentment</span>
+            <span class="sr-chip">Avoiding hard emails/calls</span>
+          </div>        
+          <div class="sr-helper">Tip: enter one clear example (what happens + when it tends to happen).</div>
+        </div>
+
+        <!-- Optional Context -->
+        <div class="sr-row">
+          <label for="context">Optional Context</label>
+          <textarea id="context" name="context" class="sr-input" placeholder="Where it shows up most, who’s usually involved, what you’ve already tried…"></textarea>
+        </div>
+
+        <!-- Email -->
+        <div class="sr-row">
+          <div class="sr-inline"><span class="sr-ico">📬</span> Email a copy? (optional)</div>
+          <input id="email" name="email" type="email" class="sr-input" placeholder="your@email.com">
+        </div>
+
+        <!-- Submit -->
+        <div class="sr-row">
+          <button type="submit" id="decodeBtn" class="button decode-btn">🔎 Trace the Root</button>
+        </div>
+<div id="sr-status" class="sr-status" aria-live="polite" style="display:none;"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+RAW JS:
+<script>
+/* ===== 0) Capture token from URL (NEW code — safe add-on) ===== */
+(function captureTokenFromUrl(){
+  const qs   = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  const t    = qs.get('token') || hash.get('token') || qs.get('aa_token') || hash.get('aa_token');
+  if (!t) return;
+
+  try { localStorage.setItem('aa_session', t); } catch {}
+  try {
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `aa_session=${encodeURIComponent(t)}; Path=/; SameSite=Lax${secure}`;
+  } catch {}
+
+  // Clean token out of visible URL
+  try {
+    const clean = new URL(location.href);
+    ['token','aa_token'].forEach(k => clean.searchParams.delete(k));
+    history.replaceState({}, '', clean.toString().replace(/#token=[^&]+/, ''));
+  } catch {}
+})();
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form      = document.getElementById("sliproot-form");
+  const patternEl = document.getElementById("pattern");
+  const contextEl = document.getElementById("context");
+  const emailEl   = document.getElementById("email");
+  const submitBtn = document.querySelector(".decode-btn");
+  const statusEl  = document.getElementById("sr-status");
+
+  // ---- WAKE LOCK (prevent screen sleep during decode) ----
+  let wakeLock = null;
+  let isDecoding = false;
+
+  async function acquireWakeLock() {
+    if (!("wakeLock" in navigator)) return;
+    try {
+      if (wakeLock) return; // already held
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => {
+        wakeLock = null;
+      });
+    } catch (err) {
+      console.warn("[Sliproot] Wake Lock request failed:", err);
+    }
+  }
+
+  async function releaseWakeLock() {
+    try {
+      if (wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    } catch (err) {
+      console.warn("[Sliproot] Wake Lock release failed:", err);
+    }
+  }
+
+  // Re-acquire wake lock if user returns while a decode is in flight
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && isDecoding) {
+      acquireWakeLock();
+    }
+  });
+
+  // ---- 1) improved helper (guarded; adds debug + masking) ----
+  if (typeof window.aaGetToken !== 'function') {
+    window.aaGetToken = function aaGetToken(){
+      const keys = ['aa_session','aa.token','aa_token'];
+      let tok = null, src = null;
+
+      for (const k of keys) {
+        const v = localStorage.getItem(k);
+        if (v) { tok = v; src = 'localStorage:' + k; break; }
+      }
+
+      if (!tok) {
+        const m = document.cookie.match(/(?:^|;\s*)(aa_session|aa_token)=([^;]+)/);
+        if (m) { tok = decodeURIComponent(m[2]); src = 'cookie:' + m[1]; }
+      }
+
+      // Debug (masked); safe to remove later
+      if (tok) {
+        const masked = tok.slice(0,4) + '…' + tok.slice(-4);
+        console.log('[AA] Token source:', src, 'masked:', masked);
+      } else {
+        console.log('[AA] No token found');
+      }
+      return tok;
+    };
+  }
+
+  // ---- 2) fetch helper with debug logs ----
+  async function fetchJSON(url, options = {}){
+    const opts = { method: 'GET', headers: {}, ...options };
+
+    // Log the request + masked headers
+    (function(){
+      const masked = {};
+      for (const [k, v] of Object.entries(opts.headers || {})) {
+        const s = String(v);
+        masked[k] = s.length > 16 ? (s.slice(0,12) + '…' + s.slice(-4)) : s;
+      }
+      console.log('[AA] → Fetch', url, { method: opts.method, headers: masked });
+    })();
+
+    const res = await fetch(url, opts);
+    const text = await res.text();
+
+    console.log('[AA] ← Response', res.status, res.statusText, 'from', url);
+    if (text) console.log('[AA] Body (raw):', text.slice(0, 500)); // preview only
+
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; }
+    catch { console.log('[AA] JSON parse failed'); }
+
+    if (!res.ok) {
+      const errMsg = (data && (data.error || data.message)) || `HTTP ${res.status}`;
+      throw new Error(errMsg);
+    }
+    return data ?? {};
+  }
+
+  // ---- gate button by credits (buy-only; no resend) ----
+  (async function gate(){
+    const ENTITLEMENTS_URL = "https://redacted-pipedream-endpoint.invalid";
+    const PRODUCT = "sliproot";
+
+    const btn = document.getElementById("decodeBtn");
+    if (!btn) return;
+
+    let note = document.getElementById("gateMsg");
+    if (!note) {
+      note = document.createElement("div");
+      note.id = "gateMsg";
+      note.style.marginTop = "8px";
+      btn.after(note);
+    }
+
+    btn.disabled = true;
+    note.textContent = "Checking access…";
+
+    const tok = aaGetToken();
+    if (!tok) {
+      note.textContent = "You’re not signed in. Open your email magic link to continue.";
+      btn.disabled = true;
+      return;
+    }
+
+    try {
+      const e = await fetchJSON(ENTITLEMENTS_URL, {
+        headers: { Authorization: "Bearer " + tok, "X-AA-Token": tok }
+      });
+      const credits = (e.credits && e.credits[PRODUCT]) || 0;
+
+      if (credits > 0) {
+        btn.disabled = false;
+        note.textContent = `You have ${credits} run${credits>1?"s":""} remaining.`;
+      } else {
+        btn.disabled = true;
+        note.innerHTML = `No credits left. <a href="/${PRODUCT}">Buy another run</a>.`;
+      }
+    } catch (err) {
+      console.log('[AA] Entitlements error:', err.message);
+      btn.disabled = true;
+      note.textContent = "Could not verify access.";
+    }
+  })();
+
+  function setStatus(msg, type="info"){
+    if (!statusEl) return;
+    statusEl.textContent = msg || "";
+    statusEl.className = `sr-status ${type}`;
+    statusEl.style.display = msg ? "block" : "none";
+  }
+
+// ------better error messages
+  function friendlySliprootError(slug, code) {
+    switch (slug) {
+      case "not_logged_in":
+        return "Your access link is no longer active. Open your latest alchAlign email and use the link there to continue.";
+
+      case "no_credits":
+        return "You’ve used all available Sliproot runs on this access link. You can purchase another run to generate a new insight.";
+
+      case "generation_failed":
+        return "We weren’t able to complete this Sliproot insight. Please try again in a few minutes.";
+
+      case "empty_prompt":
+        return "We didn’t receive your pattern/context correctly. Please refresh the page and submit again.";
+
+      case "billing_failed":
+        return "We had trouble confirming your access just now. Please try again, and contact support if this keeps happening.";
+
+      case "network_error":
+        return "We couldn’t reach the Sliproot service. Check your connection and try again.";
+
+      default:
+        if (code === 502 || code === 500) {
+          return "We hit a temporary issue while generating your Sliproot card. Please try again shortly.";
+        }
+        return "We couldn’t complete this Sliproot insight. Please try again. If it keeps happening, contact support.";
+    }
+  }
+
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const pattern = (patternEl?.value || "").trim();
+    const context = (contextEl?.value  || "").trim();
+    const email   = (emailEl?.value    || "").trim();
+
+    if (!pattern){
+      setStatus("⚠️ Please describe one pattern/behavior.", "error");
+      patternEl?.focus();
+      return;
+    }
+    if (email && !/^\S+@\S+\.\S+$/.test(email)){
+      setStatus("Please enter a valid email or leave blank.", "error");
+      emailEl?.focus();
+      return;
+    }
+
+    if (submitBtn){
+      submitBtn.disabled = true;
+      submitBtn.classList.add("pulsing");
+      submitBtn.textContent = "Exploring roots…";
+    }
+    setStatus("⏳ Processing your insight...", "info");
+
+    try {
+      isDecoding = true;
+      await acquireWakeLock();
+
+      const aa  = aaGetToken() || "";
+      const q   = aa ? `?aa_token=${encodeURIComponent(aa)}` : "";
+
+      const data = await fetchJSON("https://redacted-pipedream-endpoint.invalid" + q, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(aa ? { Authorization: "Bearer " + aa, "X-AA-Token": aa } : {})
+        },
+        body: JSON.stringify({ pattern, context, email, aaToken: aa })
+      });
+
+         if (!data.success || !data.card) {
+        console.error("Sliproot invalid response:", data);
+        const apiCode  = typeof data?.code === "number" ? data.code : 200;
+        const apiError = data?.error || "unexpected_error";
+        const friendly = friendlySliprootError(apiError, apiCode);
+        setStatus(`❌ ${friendly}`, "error");
+        return;
+      }
+
+      // persist + redirect
+      localStorage.setItem("sliprootPattern", pattern);
+      localStorage.setItem("sliprootCard", JSON.stringify(data.card));
+      localStorage.setItem("sliprootMeta", JSON.stringify({ version: data.version, ts: Date.now() }));
+
+      setStatus("✅ Pattern traced. Redirecting...", "success");
+      setTimeout(() => { window.location.href = "/sliproot-message"; }, 900);
+      } catch (err) {
+      console.error("Sliproot error:", err);
+      const friendly = friendlySliprootError("network_error");
+      setStatus(`❌ ${friendly}`, "error");
+       } finally {
+      isDecoding = false;
+      await releaseWakeLock();
+
+      if (submitBtn){
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("pulsing");
+        submitBtn.textContent = "🔎 Reveal Pattern";
+      }
+    }
+  });
+});
+</script>

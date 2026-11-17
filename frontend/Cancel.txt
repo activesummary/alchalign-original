@@ -1,0 +1,52 @@
+PAGE: CANCEL
+
+
+RAW HTML:
+<!-- /cancel -->
+<meta name="robots" content="noindex, nofollow" />
+
+<div class="cancel-page">
+  <div class="cancel-wrap">
+    <section class="cancel-panel" role="region" aria-labelledby="cancel-title">
+      <h1 id="cancel-title" class="cancel-title">Checkout wasn’t completed</h1>
+      <p class="cancel-muted">No charge was made. You can try again or pick a different option below.</p>
+
+      <div class="cancel-row actions">
+        <a id="cancel-try-again" href="https://www.alchalign.com/tools" class="btn ghost">← Return to the shop</a>
+        <a href="https://www.alchalign.com/contact" class="btn ghost">✉️ Contact support</a>
+      </div>
+
+      <h2 class="cancel-subtitle">Checkout links</h2>
+      <nav class="quick-grid" aria-label="Quick links">
+        <a href="https://www.alchalign.com/buy/aligndaily"        class="quick">AlignDaily</a>
+        <a href="https://www.alchalign.com/buy/alignmentscan"     class="quick">Alignment Scan</a>
+        <a href="https://www.alchalign.com/buy/fathom"            class="quick">Fathom</a>
+        <a href="https://www.alchalign.com/buy/sliproot"          class="quick">Sliproot</a>
+        <a href="https://www.alchalign.com/buy/alchalignbundle"   class="quick">Bundle (4 products)</a>
+      </nav>
+    </section>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+RAW JS:
+<script>
+  // If we came from a /buy/* page, make “Try again” go back there
+  (function () {
+    var a = document.getElementById('cancel-try-again');
+    if (!a) return;
+    try {
+      var ref = document.referrer || "";
+      var url = new URL(ref, location.origin);
+      if (/^\/buy\//.test(url.pathname)) {
+        a.href = ref;
+      }
+    } catch (e) { /* ignore */ }
+  })();
+</script>

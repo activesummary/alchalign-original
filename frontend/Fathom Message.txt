@@ -1,0 +1,328 @@
+PAGE: FATHOM MESSAGE
+
+
+RAW HTML:
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<div class="fathom-message-wrap">
+  <div class="fathom-output-card">
+    <header class="fathom-output-head">
+ 
+<div class="glyph"> ✺ </div>
+
+      <h1>Your Fathom Insight</h1>
+    </header>
+
+    <main id="fathom-output"></main>
+  </div><!-- /.fathom-output-card -->
+
+  <!-- Footer sits OUTSIDE the card -->
+ <footer class="actions-bar" role="contentinfo">
+  <div class="status-row" aria-live="polite">
+    <span id="email-status" class="action-status" aria-live="polite"></span>
+    <span id="action-status" class="action-status" aria-live="polite"></span>
+  </div>
+
+  <div class="actions-row">
+    <div class="email-group">
+      <button id="email-reveal" class="btn btn-primary" aria-controls="email-form" aria-expanded="false">
+        Email Me
+      </button>
+    </div>
+
+    <div class="pdf-group">
+      <button id="dl-fathom-pdf" class="btn btn-primary">Download PDF</button>
+    </div>
+
+    <!-- ⤵️ moved here (child of .actions-row) -->
+    <form id="email-form" class="email-form" hidden novalidate>
+      <label for="email-dest" class="sr-only">Email address</label>
+      <input id="email-dest" type="email" class="input email-input"
+             placeholder="you@example.com" autocomplete="email" inputmode="email">
+      <button id="email-send" type="submit" class="btn btn-primary">Send</button>
+      <button id="email-cancel" type="button" class="btn btn-ghost">Cancel</button>
+    </form>
+  </div>
+</footer>
+
+</div><!-- /.fathom-message-wrap -->
+
+
+
+
+
+RAW JS:
+<script>
+(() => {
+  // ===== CONFIG =====
+  const EMAIL_WEBHOOK_URL = "https://redacted-pipedream-endpoint.invalid";
+  const PDF_WEBHOOK_URL   = "https://redacted-pipedream-endpoint.invalid";
+  const product = "fathom";
+
+  // Canonical disclaimer (same string you enforce server-side)
+  const DISCLAIMER = "This insight is informational only and not medical advice or a diagnosis. Fathom is a reflective tool and does not treat any condition.";
+
+  // ===== Utils =====
+  const $ = (id) => document.getElementById(id);
+  const isEmail = (v) => /^\S+@\S+\.\S+$/.test(String(v || "").trim());
+  const todayName = () => `Fathom_Insight_${new Date().toISOString().slice(0,10)}.pdf`;
+  const escapeHtml = (s="") => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  const setEmailStatus = (msg, cls="") => {
+    const s = $("email-status"); if (!s) return;
+    s.textContent = msg || "";
+    s.className = "action-status" + (cls ? ` ${cls}` : "");
+  };
+  const setPdfStatus = (msg, cls="") => {
+    const s = $("action-status"); if (!s) return;
+    s.textContent = msg || "";
+    s.className = "action-status" + (cls ? ` ${cls}` : "");
+  };
+
+  // Busy helpers
+  function setBusy(btn, labelBusy){ if (!btn) return; btn.dataset.prevLabel = btn.textContent; btn.classList.add("is-busy"); if (labelBusy) btn.textContent = labelBusy; btn.disabled = true; }
+  function clearBusy(btn){ if (!btn) return; if (btn.dataset.prevLabel) btn.textContent = btn.dataset.prevLabel; btn.classList.remove("is-busy"); btn.disabled = false; }
+
+  // Blob helpers
+  function b64ToBlob(base64, mime="application/pdf"){ const bin = atob(base64), len=bin.length, bytes=new Uint8Array(len); for (let i=0;i<len;i++) bytes[i]=bin.charCodeAt(i); return new Blob([bytes],{type:mime}); }
+  function downloadBlob(blob, filename){ const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),800); }
+
+  // ---- Load + sanitize saved payload (CARD ONLY) ----
+  function loadSaved(){
+    try {
+      const raw = localStorage.getItem("fathomCard");
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      const card = p.card ? p.card : p; // support legacy shape
+      // ensure disclaimer exists
+      if (!card.disclaimer || typeof card.disclaimer !== "string") {
+        card.disclaimer = DISCLAIMER;
+      }
+      // write back scrubbed shape
+      try { localStorage.setItem("fathomCard", JSON.stringify({ card })); } catch {}
+      return { card };
+    } catch { return null; }
+  }
+
+  const saved = loadSaved();
+  const out = $("fathom-output");
+
+  // Remove any legacy symptom/date DOM nodes if present
+  (function removeMetaLines(){
+    const elSym  = $("fm-symptom");
+    const elDate = $("fm-date");
+    if (elSym?.parentNode)  elSym.parentNode.removeChild(elSym);
+    if (elDate?.parentNode) elDate.parentNode.removeChild(elDate);
+  })();
+
+  if (!saved || !saved.card) {
+    if (out) out.innerHTML = `<div class="fathom-section"><div class="fathom-body">No Fathom card found. Please decode an insight first.</div></div>`;
+    return;
+  }
+
+  // Create/find a persistent disclaimer container placed after the card
+  function ensureDisclaimerContainer(){
+    let el = document.getElementById("fathom-disclaimer");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "fathom-disclaimer";
+      el.className = "disclaimer";
+      // insert right after #fathom-output
+      if (out && out.parentNode) {
+        out.parentNode.insertBefore(el, out.nextSibling);
+      } else {
+        document.body.appendChild(el);
+      }
+    }
+    return el;
+  }
+
+  // Render card + disclaimer (no symptom/date)
+  (function render(){
+    if (!out) return;
+
+    const sections = [
+      ["On the Surface","onTheSurface"],
+      ["Consider This","considerThis"],
+      ["The Undercurrent","theUndercurrent"],
+      ["What’s Emerging","whatsEmerging"],
+      ["What's Running Your Life","whatsRunningYourLife"],
+      ["The Exchange","theExchange"],
+      ["Hidden Intelligence","hiddenIntelligence"],
+      ["The Opening","theOpening"],
+      ["Recalibrate","reorientation"],
+      ["Return to Flow","notice"],
+    ];
+
+    out.innerHTML = sections.map(([title,key]) => {
+      const body = saved.card?.[key] ? String(saved.card[key]) : "";
+      if (!body) return "";
+      const attn = key === "Realignment Practice" ? " realignmentPractice" : "";
+      return `<section class="fathom-section${attn}">
+        <h3 class="fathom-h3">${title}</h3>
+        <div class="fathom-body">${escapeHtml(body).replace(/\n/g,"<br>")}</div>
+      </section>`;
+    }).join("");
+
+    // Render disclaimer (always)
+    const discEl = ensureDisclaimerContainer();
+    discEl.innerHTML = escapeHtml(saved.card.disclaimer || DISCLAIMER);
+  })();
+
+  // Email reveal + send (now includes disclaimer)
+  (function wireEmail(){
+    const btnReveal = $("email-reveal");
+    const form      = $("email-form");
+    const input     = $("email-dest");
+    const btnSend   = $("email-send");
+    const btnCancel = $("email-cancel");
+    const group     = document.querySelector(".email-group") || null;
+
+    const contentEl   = $("fathom-output");
+    const disclaimerEl= document.getElementById("fathom-disclaimer");
+
+    if (!btnReveal || !form || !input || !btnSend || !contentEl) {
+      console.warn("[Fathom] Email wiring skipped (missing elements).", {
+        btnReveal: !!btnReveal, form: !!form, input: !!input, btnSend: !!btnSend, contentEl: !!contentEl
+      });
+      return;
+    }
+
+    let autofillWatch = null;
+    const toggle = () => { btnSend.disabled = !isEmail((input.value || "").trim()); };
+    const startAutofillWatch = () => { stopAutofillWatch(); autofillWatch = setInterval(toggle,150); setTimeout(stopAutofillWatch,3000); };
+    const stopAutofillWatch = () => { if (autofillWatch) { clearInterval(autofillWatch); autofillWatch=null; } };
+
+    btnReveal.addEventListener("click", () => {
+      if (group) group.classList.add("is-open");
+      form.hidden = false;
+      btnReveal.setAttribute("aria-expanded","true");
+      setEmailStatus("", "");
+      toggle(); requestAnimationFrame(toggle); setTimeout(toggle,0);
+      startAutofillWatch(); input.focus();
+
+     // 🔽 NEW: smooth scroll into view + refocus without jump
+     form.scrollIntoView({ behavior: "smooth", block: "center" });
+     setTimeout(() => input.focus({ preventScroll: true }), 200);
+    });
+
+    btnCancel && btnCancel.addEventListener("click", () => {
+      if (group) group.classList.remove("is-open");
+      form.hidden = true;
+      btnReveal.setAttribute("aria-expanded","false");
+      setEmailStatus("", "");
+      stopAutofillWatch();
+    });
+
+    ["input","change","keyup","paste","blur"].forEach(ev => input.addEventListener(ev, toggle));
+    toggle();
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = (input.value || "").trim();
+      if (!isEmail(email)) { setEmailStatus("Enter a valid email.", "fail"); input.focus(); return; }
+
+
+
+      // Include disclaimer with the fragment we send
+      const htmlFragment =
+        (contentEl?.outerHTML || "") +
+        (disclaimerEl?.outerHTML || `<div class="disclaimer">${escapeHtml(DISCLAIMER)}</div>`);
+
+      if (!htmlFragment) { setEmailStatus("Nothing to send yet.", "fail"); return; }
+
+      setBusy(btnSend, "Sending…");
+      setEmailStatus("Sending email…", "");
+
+      try {
+        const res = await fetch(EMAIL_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            product: "fathom",
+            html: htmlFragment // includes disclaimer
+          })
+        });
+
+        if (!res.ok) {
+          const t = await res.text().catch(()=>`HTTP ${res.status}`);
+          throw new Error(t);
+        }
+
+        setEmailStatus("✓ Email sent.", "ok");
+        form.hidden = true;
+        btnReveal.setAttribute("aria-expanded","false");
+        input.value = "";
+        stopAutofillWatch();
+      } catch (err) {
+        console.error(err);
+        setEmailStatus("Couldn’t send email. Please try again.", "fail");
+      } finally {
+        clearBusy(btnSend);
+        toggle();
+      }
+    });
+  })();
+
+  /*--------------Workflow deactivated (PDF) ---------
+  // PDF download (scrubbed: no symptom/processedAt)
+  (function wirePDF(){
+    const btnPdf = $("downloadBtn");
+    if (!btnPdf) return;
+
+    btnPdf.addEventListener("click", async () => {
+      const { card } = saved;
+      const filename = todayName();
+
+      setBusy(btnPdf, "Preparing…");
+      setPdfStatus("Building PDF…", "");
+
+      try {
+        const res = await fetch(PDF_WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type":"application/json",
+            "Accept":"application/pdf, application/json"
+          },
+          cache: "no-store",
+          body: JSON.stringify({ product, filename, card }) // ← no symptom/date
+        });
+        if (!res.ok) throw new Error(await res.text().catch(()=>`HTTP ${res.status}`));
+
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        let blob;
+
+        if (ct.includes("application/json")) {
+          const data = await res.json();
+          if (!data.pdfBase64) throw new Error("No pdfBase64 in response");
+          blob = b64ToBlob(data.pdfBase64, "application/pdf");
+        } else {
+          blob = await res.blob();
+          const head = await blob.slice(0,5).arrayBuffer();
+          const sig = new TextDecoder().decode(new Uint8Array(head));
+          if (sig !== "%PDF-") {
+            const txt = await blob.text();
+            try {
+              const j = JSON.parse(txt);
+              if (j.pdfBase64) blob = b64ToBlob(j.pdfBase64, "application/pdf");
+              else throw new Error("No pdfBase64 found");
+            } catch {
+              throw new Error("Invalid PDF bytes received");
+            }
+          }
+        }
+
+        downloadBlob(blob, filename);
+        setPdfStatus("✓ Insight downloaded!", "ok");
+      } catch (err) {
+        console.error(err);
+        setPdfStatus("Couldn’t create PDF. Please try again.", "fail");
+      } finally {
+        clearBusy(btnPdf);
+      }
+    });
+  })();
+  ----------DEACTIVATED----------*/
+
+})();
+</script>

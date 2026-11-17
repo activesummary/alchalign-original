@@ -1,0 +1,282 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 PAGE: PORTAL (DASHBOARD)\
+\
+RAW HTML:\
+<!-- /portal (revamped) -->\
+<meta name="robots" content="noindex, nofollow">\
+<meta name="viewport" content="width=device-width,initial-scale=1" />\
+<div class="portal-page">\
+<div class="wrap">\
+  <div class="header">\
+    <div class="title">Your tools</div>\
+    <div id="portalUser" class="muted"></div>\
+  </div>\
+\
+  <div id="portalRoot" class="panel">\
+    <div id="portalLoading" class="grid" aria-live="polite">\
+  <div class="loading-head">\
+    <div class="spinner" aria-hidden="true"></div>\
+    <div class="loading-text">Checking your access\'85</div>\
+  </div>\
+  <div class="skeleton" style="grid-column:span 6"></div>\
+  <div class="skeleton" style="grid-column:span 6"></div>\
+  <div class="skeleton" style="grid-column:span 6"></div>\
+  <div class="skeleton" style="grid-column:span 6"></div>\
+</div>\
+\
+    <div id="portalSignin" style="display:none">\
+  <p class="muted">Get a magic link to sign in:</p>\
+\
+  <div class="grid signin-grid" joined>\
+    <div class="col-email">\
+      <input id="portalEmail" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email">\
+    </div>\
+    <div class="col-btn">\
+      <button id="sendLink" class="btn primary" style="width:100%">Send magic link</button>\
+    </div>\
+  </div>\
+\
+  <p class="hint">\
+    <strong>Why am I seeing this?</strong>\
+    Your magic link may be expired (links work for <strong>1 hour</strong>) or you\'92re not signed in yet.\
+    Enter the same email you used at checkout and we\'92ll send a fresh link. If you don\'92t see it, check Spam/Promotions.\
+  </p>\
+</div>\
+\
+  <div id="signinMsg" class="foot muted" aria-live="polite"></div>\
+\
+    <div id="portalContent" style="display:none">\
+      <p class="muted" id="portalLead">Launch any tool you own. Buy more runs when you need them.</p>\
+      <div id="portalCards" class="cards"></div>\
+      <div class="foot">\
+        <button id="signOut" class="btn">Sign out</button>\
+        <span class="muted" style="margin-left:10px" id="entStatus"></span>\
+      </div>\
+    </div>\
+\
+    <div id="portalError" style="display:none">\
+      <div class="notice error">Could not load your access. Refresh, or resend a magic link below.</div>\
+    </div>\
+\
+  </div>\
+</div>\
+</div> <!-- closes .wrap and .portal-page -->\
+\
+\
+\
+\
+\
+RAW JS:\
+<script>\
+(function()\{\
+  const ENTITLEMENTS_URL = "https://redacted-pipedream-endpoint.invalid";\
+  const AUTH_URL         = "https://redacted-pipedream-endpoint.invalid?action=redeem";\
+\
+  const TOOLS = ["fathom","sliproot","aligndaily","alignmentscan"];\
+  const ROUTE = \{ fathom:"/fathom-portal", sliproot:"/sliproot-portal", aligndaily:"/aligndaily-portal", alignmentscan:"/alignment-portal" \};\
+  const BUY   = \{ fathom:"/fathom", sliproot:"/sliproot", aligndaily:"/aligndaily", alignmentscan:"/alignmentscan" \};\
+  const ICON  = \{ fathom:"\uc0\u55358 \u56800 ", sliproot:"\u55356 \u57151 ", aligndaily:"\u55357 \u56517 ", alignmentscan:"\u55358 \u56813 " \};\
+  const NAME  = \{ fathom:"Fathom", sliproot:"Sliproot", aligndaily:"AlignDaily", alignmentscan:"AlignmentScan" \};\
+\
+  function canonKey(s)\{\
+    const k = String(s||"").toLowerCase().trim().replace(/[\\s_-]+/g,"");\
+    if (["alignmentscan","alignscan","align-scan","alignment scan"].includes(k)) return "alignmentscan";\
+    if (["aligndaily","daily"].includes(k)) return "aligndaily";\
+    if (["sliproot"].includes(k)) return "sliproot";\
+    if (["fathom"].includes(k)) return "fathom";\
+    return k;\
+  \}\
+\
+  if (typeof window.aaGetToken !== "function") \{\
+    window.aaGetToken = function()\{\
+      return localStorage.getItem("aa_session") ||\
+             (document.cookie.match(/(?:^|;\\s*)aa_session=([^;]+)/)||[])[1] || null;\
+    \};\
+  \}\
+\
+  function clearSession()\{\
+    try\{\
+      localStorage.removeItem("aa_session");\
+      sessionStorage.removeItem("aa_session");\
+    \}catch(_)\{\}\
+    const rootDomain = location.hostname.replace(/^www\\./, "");\
+    const past = "Thu, 01 Jan 1970 00:00:00 GMT";\
+    // clear cookie for current host\
+    document.cookie = "aa_session=; expires="+past+"; path=/;";\
+    // clear cookie for root domain (if it was set there)\
+    document.cookie = "aa_session=; expires="+past+"; path=/; domain=."+rootDomain+";";\
+  \}\
+\
+  const el = \{\
+    loading:  document.getElementById("portalLoading"),\
+    signin:   document.getElementById("portalSignin"),\
+    sendBtn:  document.getElementById("sendLink"),\
+    email:    document.getElementById("portalEmail"),\
+    msg:      document.getElementById("signinMsg"),\
+    content:  document.getElementById("portalContent"),\
+    cards:    document.getElementById("portalCards"),\
+    user:     document.getElementById("portalUser"),\
+    entStatus:document.getElementById("entStatus"),\
+    error:    document.getElementById("portalError"),\
+    signOut:  document.getElementById("signOut"),\
+  \};\
+\
+  function isValidEmail(v)\{ return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(v); \}\
+\
+  // one (and only) sendLink()\
+  async function sendLink()\{\
+    const email = (el.email.value||"").trim().toLowerCase();\
+    if(!isValidEmail(email))\{\
+      el.msg.innerHTML = "<span class='warn'>Enter a valid email.</span>";\
+      el.email.focus();\
+      return;\
+    \}\
+    const old = el.sendBtn.textContent;\
+    el.sendBtn.disabled = true;\
+    el.sendBtn.innerHTML = '<span class="mini-spinner" aria-hidden="true"></span>Sending\'85';\
+    el.msg.textContent = "";\
+\
+    try\{\
+      const sid = new URLSearchParams(location.search).get("session_id") || "";\
+      const r = await fetch(AUTH_URL, \{\
+        method:"POST",\
+        headers:\{ "content-type":"application/json" \},\
+        body: JSON.stringify(\{ email, session_id: sid \})\
+      \});\
+      const ct  = r.headers.get("content-type") || "";\
+      const raw = await r.text();\
+      let data  = null; try \{ data = ct.includes("json") ? JSON.parse(raw) : null; \} catch \{\}\
+      if ((r.status === 202 || r.status === 429) && data?.reason === "throttled")\{\
+        el.msg.innerHTML = "<span class='ok'>Sent.</span> Click the link in your email to log in.";\
+      \} else if (r.ok)\{\
+        el.msg.innerHTML = "<span class='ok'>Sent.</span> Check your inbox for a secure link.";\
+      \} else \{\
+        el.msg.innerHTML = "<span class='warn'>Could not send link.</span>";\
+      \}\
+    \}catch\{\
+      el.msg.innerHTML = "<span class='warn'>Network error. Try again.</span>";\
+    \}finally\{\
+      setTimeout(()=>\{\
+        el.sendBtn.innerHTML = old;\
+        el.sendBtn.disabled = !isValidEmail((el.email.value||"").trim());\
+      \}, 900);\
+    \}\
+  \}\
+\
+  // live-enable button on valid email\
+  el.sendBtn.disabled = true;\
+  el.email.addEventListener("input", ()=>\{\
+    el.sendBtn.disabled = !isValidEmail((el.email.value||"").trim());\
+  \});\
+  el.sendBtn.onclick = sendLink;\
+  el.email.addEventListener("keydown", (e)=>\{ if(e.key==="Enter")\{ e.preventDefault(); sendLink(); \}\});\
+\
+function show(view)\{\
+  // hide everything by default\
+  el.loading.style.display = "none";\
+  el.signin.style.display  = "none";\
+  el.content.style.display = "none";\
+  el.error.style.display   = "none";\
+\
+  if (view === "loading") \{\
+    el.loading.style.display = "block";\
+  \} else if (view === "signin") \{\
+    el.signin.style.display = "block";\
+  \} else if (view === "content") \{\
+    el.content.style.display = "block";\
+  \} else if (view === "error") \{\
+    // show BOTH the error notice and the magic-link form\
+    el.error.style.display  = "block";\
+    el.signin.style.display = "block";\
+  \}\
+\}\
+\
+  function normalizeCredits(raw)\{\
+    const byCanon = \{\};\
+    Object.entries(raw||\{\}).forEach(([k,v])=>\{\
+      const key = canonKey(k.replace(/^credits_/, ""));\
+      byCanon[key] = (byCanon[key]||0) + (parseInt(v,10)||0);\
+    \});\
+    return byCanon;\
+  \}\
+\
+  function toolCard(key, credits)\{\
+    const name = NAME[key] || key, icon = ICON[key] || "\uc0\u55358 \u56809 ";\
+    const href = ROUTE[key] || "/tools", buy = BUY[key] || "/tools";\
+    const count = credits[key]||0, has = count>0;\
+    const chip = has\
+      ? `<span class="chip good">$\{count\} run$\{count>1?"s":""\} left</span>`\
+      : `<span class="chip warn">No credits</span>`;\
+    const openBtn = `<a class="btn primary" $\{has?`href="$\{href\}"`:`aria-disabled="true"`\}>Open</a>`;\
+    const buyBtn  = `<a class="btn" href="$\{buy\}">Buy runs</a>`;\
+    return `\
+      <div class="card">\
+        <div class="row"><div class="label"><span class="icon">$\{icon\}</span>$\{name\}</div>$\{chip\}</div>\
+        <div class="muted">Access to $\{name\}</div>\
+        <div class="row-actions">$\{openBtn\}$\{buyBtn\}</div>\
+      </div>`;\
+  \}\
+\
+async function loadEntitlements()\{\
+  show("loading");\
+  document.title = "Loading your tools\'85";\
+  const tok = aaGetToken();\
+  if (!tok)\{\
+    show("signin");\
+    document.title = "Sign in \'95 Your tools";\
+    setTimeout(()=> el.email?.focus(), 50);\
+    return;\
+  \}\
+  try\{\
+    const r = await fetch(ENTITLEMENTS_URL, \{\
+      headers:\{ Authorization: "Bearer " + tok \}\
+    \});\
+\
+    // \uc0\u55357 \u56594  If token is invalid/expired, treat as signed-out\
+    if (r.status === 401 || r.status === 403) \{\
+      console.warn("[portal] token unauthorized, clearing session");\
+      clearSession();\
+      el.msg.innerHTML =\
+        "<span class='warn'>Your session has expired. Request a new magic link to sign in again.</span>";\
+      show("signin");\
+      document.title = "Sign in \'95 Your tools";\
+      setTimeout(()=> el.email?.focus(), 50);\
+      return;\
+    \}\
+\
+    if (!r.ok) \{\
+      throw new Error("entitlements_failed (" + r.status + ")");\
+    \}\
+\
+    const e = await r.json();\
+    el.user.textContent = e.email || "";\
+    const credits = normalizeCredits(e.credits || \{\});\
+    el.cards.innerHTML = TOOLS.map(k => toolCard(k, credits)).join("");\
+    show("content");\
+    document.title = "Your tools";\
+    el.cards.querySelector('.btn.primary[href]')?.focus();\
+  \}catch(err)\{\
+    console.error("[portal] entitlements error:", err);\
+    show("error");                     // now shows error + signin form\
+    document.title = "Error \'95 Your tools";\
+  \}\
+\}\
+\
+  // Robust sign out\
+  el.signOut.onclick = (e)=>\{\
+    e.preventDefault();\
+    clearSession();\
+    // hard reload with cache-buster to prevent any stale state\
+    location.replace("/portal?signedout=1&t="+Date.now());\
+  \};\
+\
+  loadEntitlements();\
+\})();\
+</script>\
+}

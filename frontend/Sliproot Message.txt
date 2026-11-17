@@ -1,0 +1,615 @@
+PAGE: SLIPROOT MESSAGE
+
+
+RAW HTML:
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<div id="sliproot-message">
+  <div class="sr-wrap">
+   <div class="sr-card sliproot-card" style="display:none;">
+      <div class="sr-head">
+
+ <div class="sr-glyph" aria-hidden="true">
+    <!-- Subtle blue gradient leaf emblem -->
+  </div> <!-- ← close this -->
+
+  <h1 class="sr-title">Your Sliproot Insight</h1>
+</div>
+
+
+      <div class="sr-body">
+        <!-- Sections: JS fills .content when card[key] exists -->
+        <section class="sliproot-section sr-section" data-key="about">
+          <h2>About This Pattern</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="roots">
+          <h2>Root Pattern</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="belief">
+          <h2>Core Belief</h2>
+          <div class="content"></div>
+        </section>
+
+       <section class="sliproot-section sr-section" data-key="rule">
+          <h2>Hidden Rule</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="tradeoff">
+          <h2>The Cost of Keeping It</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="emerging">
+          <h2>The Surfacing Tension</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="system">
+          <h2>Inner Impact</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="environment">
+          <h2>What Makes It Stronger</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="actions">
+          <h2>Alignment Directive</h2>
+          <div class="content"></div>
+        </section>
+
+        <section class="sliproot-section sr-section" data-key="integration">
+          <h2>Living in Flow</h2>
+          <div class="content"></div>
+        </section>
+
+<hr class="sr-divider" />
+  <p class="sr-disclaimer">Sliproot offers reflective analysis, not therapy, medical, or legal advice. Use your judgment and seek professional support when needed.</p>
+
+        <!-- Optional loading hook your JS references (kept hidden until used) -->
+        <div id="sliproot-loading" class="sr-loading" style="display:none;">Working…</div>
+      </div>
+    </div>
+</div>
+<!-- Footer lives outside the report card -->
+<section id="sr-footer" class="sr-footer" aria-labelledby="sr-footer-title">
+  <!-- status line ABOVE the buttons -->
+  <div id="status-message" class="sr-status" role="status" aria-live="polite"></div>
+
+  <div class="sr-footer-buttons">
+    <button id="emailBtn" class="btn-primary">Email a Copy</button>
+    <button id="dl-sliproot-pdf" class="btn-secondary">Download PDF</button>
+  </div>
+
+  <!-- compact email drawer -->
+  <div id="email-container" class="sr-email" hidden>
+    <label for="email-input">Where should we send it?</label>
+    <input id="email-input" type="email" placeholder="you@example.com" autocomplete="email" />
+    <div class="sr-email-actions">
+      <button id="email-submit" class="btn-primary">Send</button>
+      <button id="email-close" class="btn-secondary">Close</button>
+    </div>
+    <div id="email-status" class="sr-status" aria-live="polite"></div>
+  </div>
+</section>
+</div>
+
+
+
+
+RAW JS:
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("✅ Sliproot script loaded");
+
+  const cardData = localStorage.getItem("sliprootCard");
+  if (!cardData) {
+    document.body.innerHTML = "<p style='text-align:center;'>No insight available. Please go back and try again.</p>";
+    console.warn("⚠️ No card data found in localStorage.");
+    return;
+  }
+
+  const parsed = JSON.parse(cardData);
+  const card = parsed.card || parsed;
+  window.sliprootCardData = card;
+
+/*---------Why is this here
+ // === Pattern title (appears under the main title) ===
+  try {
+    const raw = localStorage.getItem("sliprootPattern") || "";
+    const patternText = String(raw).trim();
+    if (patternText) {
+      const short = patternText.length > 100 ? patternText.slice(0, 97) + "…" : patternText;
+      const head = document.querySelector(".sr-head");
+      if (head && !document.querySelector(".sr-pattern-title")) {
+        const t = document.createElement("div");
+        t.className = "sr-pattern-title";
+        t.style.cssText = "margin-top:.35rem;color:#374151;font-size:0.95rem;";
+        t.textContent = `Pattern: ${short}`;
+        head.appendChild(t);
+      }
+    }
+  } catch (e) {
+    console.warn("Pattern title not set:", e);
+  }
+----------Probably remove-------*/
+
+console.log("Sliproot card keys:", Object.keys(card));
+
+
+
+// Heuristic: does the user pattern/content look "meaning/synchrony" flavored?
+const MEANING_HINT = /\b(11:11|11\.11|angel\s*number|synchro|synchronic|signs?|omen|coinciden[ct]|universe\s*send|message\s*from)\b/i;
+
+function looksMeaningish({ card, patternText }) {
+  if (patternText && MEANING_HINT.test(patternText)) return true;
+  const blobs = [
+    card.aboutThisPattern, card.rootPattern, card.whatMightBeEmerging,
+    card.environmentalAmplifiers, card.alignmentDirective
+  ].filter(Boolean).join(" ");
+  return MEANING_HINT.test(blobs);
+}
+
+// Optional: show version + timestamp if you saved them earlier
+/*remove version and timestamp
+try {
+  const meta = JSON.parse(localStorage.getItem("sliprootMeta") || "{}");
+  const head = document.querySelector(".sr-head");
+  if (head) {
+    const badge = document.createElement("div");
+    badge.style.cssText = "margin-top:.25rem;color:#6b7280;font-size:.8rem;";
+    const ts = meta.ts ? new Date(meta.ts).toLocaleString() : "";
+    badge.textContent = [meta.version || "v2", ts].filter(Boolean).join(" • ");
+    head.appendChild(badge);
+  }
+} catch {}
+----remove version and timestamp*/
+
+//Override just the Actions heading
+const patternText = localStorage.getItem("sliprootPattern") || "";
+const useMeaningLabel = looksMeaningish({ card, patternText });
+
+if (useMeaningLabel) {
+  const h2 = document.querySelector('[data-key="actions"] h2');
+  if (h2) h2.textContent = "Make Sense of Mystery";
+}
+
+// Map HTML data-key -> backend JSON key
+const SECTION_MAP = {
+  about: "aboutThisPattern",
+  roots: "rootPattern",
+  belief: "coreBelief",
+  rule: "hiddenRule",
+  tradeoff: "tradeOff",
+  emerging: "whatMightBeEmerging",
+  system: "innerImpact",
+  environment: "environmentalAmplifiers",
+  actions: "alignmentDirective",
+  integration: "thrivingState",
+};
+
+// Friendly headings (display only; backend keys unchanged)
+const LABELS_PLAIN = {
+  aboutThisPattern: "Pattern Insight",
+  rootPattern: "Why It Started",
+  coreBelief: "Core Belief",
+  hiddenRule: "Hidden Rule",
+  tradeOff: "The Cost of Keeping It",
+  whatMightBeEmerging: "The Surfacing Tension",
+  innerImpact: "Inner Impact",
+  environmentalAmplifiers: "What Makes It Stronger",
+  alignmentDirective: "Break the Loop",
+  thrivingState: "Living in Flow",
+};
+
+// === Populate Card ===
+document.querySelectorAll(".sliproot-section").forEach((section) => {
+  const htmlKey = section.dataset.key;                 // e.g., "about"
+  const cardKey = SECTION_MAP[htmlKey];                // e.g., "aboutThisPattern"
+  const contentDiv = section.querySelector(".content");
+  const headingEl = section.querySelector("h2");
+
+  const text = cardKey ? (card[cardKey] || "").trim() : "";
+
+  // Set friendly heading
+  if (headingEl && LABELS_PLAIN[cardKey]) {
+    headingEl.textContent = LABELS_PLAIN[cardKey];
+  }
+
+  if (text) {
+    contentDiv.textContent = text;                     // safe (no HTML injection)
+    section.style.display = "";                        // ensure visible
+  } else {
+    section.style.display = "none";                    // hide empty sections
+  }
+});
+
+document.querySelector(".sliproot-card").style.display = "block";
+
+
+  // === PDF Logic ===
+
+
+/*------------- disabled workflow ---------------
+  const pdfBtn = document.getElementById("downloadBtn");
+  const statusEl = document.getElementById("status-message");
+
+  if (pdfBtn && statusEl) {
+    pdfBtn.addEventListener("click", async () => {
+      handleStatus(statusEl, "📄 Generating your PDF...", "info");
+      pdfBtn.disabled = true;
+      pdfBtn.classList.add("pulsing");
+
+      const element = document.querySelector(".sliproot-card");
+      if (!element) {
+        handleStatus(statusEl, "⚠️ Insight not found.", "error");
+        resetBtn(pdfBtn, "⬇ PDF");
+        return;
+      }
+
+      try {
+        const response = await fetch("https://redacted-pipedream-endpoint.invalid", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ html: element.innerHTML.trim() }),
+        });
+
+        const text = await response.text();
+        const json = JSON.parse(text);
+        if (!json?.file) throw new Error("Missing file in response");
+
+        const link = document.createElement("a");
+        link.href = json.file;
+        link.download = "Sliproot_Insight.pdf";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        handleStatus(statusEl, "✅ Insight downloaded!", "success");
+      } catch (err) {
+        console.error("PDF error:", err);
+        handleStatus(statusEl, "❌ Failed to generate PDF.", "error");
+      }
+
+      resetBtn(pdfBtn, "⬇ PDF");
+    });
+  }
+------------------  disabled workflow*/
+
+
+  // === Email UI Reveal ===
+  const emailBtn = document.getElementById("emailBtn");
+  const emailContainer = document.getElementById("email-container");
+  emailBtn?.addEventListener("click", () => {
+    emailContainer.style.display = "block";
+    document.getElementById("email-input")?.focus();
+  });
+
+  // === Email Submit ===
+  const emailSubmit = document.getElementById("email-submit");
+  const emailInput = document.getElementById("email-input");
+  const emailStatus = document.getElementById("email-status");
+
+  emailSubmit?.addEventListener("click", async () => {
+    const email = emailInput.value.trim();
+    if (!validateEmail(email)) {
+      handleStatus(emailStatus, "Please enter a valid email address.", "error");
+      return;
+    }
+
+    const contentEl = document.querySelector(".fathom-card, .sliproot-card, .alignment-guide");
+    if (!contentEl) {
+      handleStatus(emailStatus, "Could not find content to send.", "error");
+      return;
+    }
+
+    let product = "";
+    if (contentEl.classList.contains("fathom-card")) product = "fathom";
+    else if (contentEl.classList.contains("sliproot-card")) product = "sliproot";
+    else if (contentEl.classList.contains("alignment-guide")) product = "alignment";
+
+    handleStatus(emailStatus, "📨 Sending your insight...", "info");
+    emailInput.disabled = true;
+
+    try {
+      const response = await fetch("https://redacted-pipedream-endpoint.invalid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, html: contentEl.outerHTML, product })
+      });
+
+      const text = await response.text();
+      let result = null;
+
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error(text || "Non-JSON error response");
+      }
+
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || "Backend reported failure");
+      }
+
+      handleStatus(emailStatus, "✅ Sent!", "success");
+
+    } catch (err) {
+      console.error("Email error:", err);
+      handleStatus(emailStatus, `❌ ${err.message}`, "error");
+    } finally {
+      emailInput.disabled = false;
+    }
+  });
+
+  // === Shared Helpers ===
+  function validateEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function handleStatus(el, message, type = "info") {
+    el.textContent = message;
+    el.style.display = "block";
+    el.style.color = {
+      success: "green",
+      error: "#d75a4a",
+      info: "#555"
+    }[type] || "#555";
+    el.style.fontSize = "0.9rem";
+    el.style.fontWeight = "500";
+  }
+
+  function resetBtn(btn, label) {
+    btn.classList.remove("pulsing");
+    btn.textContent = label;
+    btn.disabled = false;
+  }
+
+// toggle email drawer open/close
+document.getElementById("emailBtn")?.addEventListener("click", ()=>{
+  const box = document.getElementById("email-container");
+  const input = document.getElementById("email-input");
+  if (!box) return;
+  box.hidden = !box.hidden;
+  document.getElementById("status-message")?.classList.remove("ok","err");
+  if (!box.hidden) input?.focus();
+});
+document.getElementById("email-close")?.addEventListener("click", ()=>{
+  const box = document.getElementById("email-container");
+  if (box) box.hidden = true;
+});
+
+// make handleStatus color classes match the new CSS (optional)
+const _origHandleStatus = (typeof handleStatus === "function") ? handleStatus : null;
+window.handleStatus = function(el, message, type="info"){
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.display = message ? "block" : "none";
+  el.classList.remove("ok","err");
+  if (type === "success") el.classList.add("ok");
+  if (type === "error")   el.classList.add("err");
+  // keep old inline colors if you want:
+  if (_origHandleStatus && _origHandleStatus !== window.handleStatus) {
+    // _origHandleStatus(el, message, type);
+  }
+};
+
+
+});
+</script>
+
+
+
+
+
+RAW JS:
+<script>
+(function(){
+const PRINT_CSS = `
+/* BASE PRINT RULES — apply on desktop & mobile (style tag has media="print") */
+html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+@page { size: Letter; margin: 0.25in; }
+
+/* Hide everything but our wrapper */
+body.aa-printing * { display: none !important; }
+body.aa-printing #aa-print,
+body.aa-printing #aa-print * { display: revert !important; visibility: visible !important; }
+@supports not (display: revert) {
+  body.aa-printing #aa-print,
+  body.aa-printing #aa-print * { display: initial !important; }
+}
+
+/* Desktop/tablet-desktop: exact Letter width with inner padding margins */
+body.aa-printing #aa-print{
+  position: static !important;
+  width: 7.75in !important;          /* was 8.5in */
+  max-width: 7.75in !important;
+  margin: 0 auto !important;
+  padding: 0.25in !important;        /* inner padding to match @page margin */
+  box-sizing: border-box !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+
+/* MOBILE override: flexible width to avoid right-side clipping */
+@media (max-device-width: 1024px) {
+  body.aa-printing #aa-print{
+    width: 100% !important; max-width: 100% !important;
+    padding-left: 0.5in !important; padding-right: 0.5in !important;
+    padding-top: 0.5in !important; padding-bottom: 0.5in !important;
+  }
+}
+
+/* Sanity resets inside wrapper */
+body.aa-printing #aa-print *,
+body.aa-printing #aa-print *::before,
+body.aa-printing #aa-print *::after{
+  box-sizing: border-box !important;
+  transform: none !important; contain: none !important; max-height: none !important; overflow: visible !important;
+}
+body.aa-printing #aa-print [style*="position:fixed"],
+body.aa-printing #aa-print [style*="position:sticky"]{ position: static !important; }
+
+/* Kill theme/container paddings that push content */
+body.aa-printing #aa-print .vc_row,
+body.aa-printing #aa-print .container,
+body.aa-printing #aa-print [class*="container"],
+body.aa-printing #aa-print [class*="vc_row"]{
+  width:100% !important; max-width:100% !important;
+  margin-left:0 !important; margin-right:0 !important;
+  padding-left:0 !important; padding-right:0 !important;
+}
+
+/* Normalize viewport-based widths that can overflow in print */
+body.aa-printing #aa-print [style*="100vw"],
+body.aa-printing #aa-print [style*="99vw"],
+body.aa-printing #aa-print [style*="calc(100vw"]{
+  width: 100% !important; max-width: 100% !important; left: 0 !important; right: 0 !important;
+}
+
+/* Media should never overflow the printable width */
+body.aa-printing #aa-print img,
+body.aa-printing #aa-print svg,
+body.aa-printing #aa-print canvas,
+body.aa-printing #aa-print video{ max-width:100% !important; height:auto !important; }
+
+/* Minor niceties */
+body.aa-printing #aa-print > *:first-child { margin-top: 0 !important; }
+body.aa-printing #aa-print .day-block,
+body.aa-printing #aa-print .workout-block,
+body.aa-printing #aa-print .meal-block,
+body.aa-printing #aa-print .sliproot-section,
+body.aa-printing #aa-print .report-container { break-inside:auto !important; page-break-inside:auto !important; }
+body.aa-printing #aa-print figure,
+body.aa-printing #aa-print .card-header,
+body.aa-printing #aa-print .align-header { break-inside:avoid; page-break-inside:avoid; }
+
+/* Headings sometimes appear off-center after containers are neutralized */
+body.aa-printing #aa-print h1,
+body.aa-printing #aa-print h2,
+body.aa-printing #aa-print h3,
+body.aa-printing #aa-print h4{
+  margin-left:0 !important; margin-right:0 !important;
+}
+
+/* --- Avoid bad breaks in common blocks --- */
+body.aa-printing #aa-print .day-block,
+body.aa-printing #aa-print .sliproot-section,
+body.aa-printing #aa-print .report-section,
+body.aa-printing #aa-print .card,
+body.aa-printing #aa-print figure { 
+  break-inside: avoid; 
+  page-break-inside: avoid; 
+}
+
+/* Keep headings with the content that follows */
+body.aa-printing #aa-print h1,
+body.aa-printing #aa-print h2,
+body.aa-printing #aa-print h3,
+body.aa-printing #aa-print .section-title {
+  break-after: avoid-page;
+  page-break-after: avoid;
+}
+
+/* Tables: keep rows together; repeat header on new page (where supported) */
+body.aa-printing #aa-print table { page-break-inside:auto; }
+body.aa-printing #aa-print tr    { break-inside:avoid; page-break-inside:avoid; }
+body.aa-printing #aa-print thead { display: table-header-group; }
+body.aa-printing #aa-print tfoot { display: table-footer-group; }
+
+/* Print-only utilities */
+body.aa-printing #aa-print .avoid-break { break-inside:avoid; page-break-inside:avoid; }
+body.aa-printing #aa-print .keep-with-next { break-after:avoid-page; page-break-after:avoid; }
+body.aa-printing #aa-print .keep-with-prev { break-before:avoid-page; page-break-before:avoid; }
+body.aa-printing #aa-print .force-break   { break-before:page; page-break-before:always; }
+
+/* Prefer keeping short paragraphs / list items together */
+body.aa-printing #aa-print p,
+body.aa-printing #aa-print li {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Ask the engine to avoid tiny widows/orphans (some engines honor this) */
+body.aa-printing #aa-print p,
+body.aa-printing #aa-print li {
+  widows: 2;
+  orphans: 2;
+}
+
+/* Hyphenation choice (pick one): 
+   - 'auto' reduces awkward line wraps (can help keep sentences together)
+   - 'none' avoids word splits but may increase wrapping */
+body.aa-printing #aa-print { hyphens: auto; }
+
+  /* Clamp Sliproot layout inside printable area (desktop) */
+  body.aa-printing #aa-print .sr-wrap{
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.aa-printing #aa-print .sliproot-card{
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+`;
+
+  function wirePrint(buttonSelector, { root, header=null, title="Export" }){
+    const btn = document.querySelector(buttonSelector);
+    if (!btn) return;
+
+    btn.addEventListener("click", () => {
+      const rootEl   = document.querySelector(root);
+      const headerEl = header ? document.querySelector(header) : null;
+      if (!rootEl){ alert("Nothing to export."); return; }
+
+      // build wrapper
+      const wrap = document.createElement("div");
+      wrap.id = "aa-print";
+      if (headerEl && !rootEl.contains(headerEl)) wrap.appendChild(headerEl.cloneNode(true));
+      wrap.appendChild(rootEl.cloneNode(true));
+      wrap.querySelectorAll('.sr-loading, #sliproot-loading, [data-aa-pdf="exclude"], .no-print, script, link[rel="preload"]').forEach(n=>n.remove());
+
+      // inject PRINT CSS only for this print session
+      const style = document.createElement("style");
+      style.id = "aa-print-temp-style";
+      style.setAttribute("media","print");
+      style.textContent = PRINT_CSS;
+
+      // lock out multi-taps
+      btn.disabled = true; btn.classList.add("pulsing");
+      document.head.appendChild(style);
+      document.body.appendChild(wrap);
+      document.body.classList.add("aa-printing");
+
+      const cleanup = () => {
+        document.body.classList.remove("aa-printing");
+        wrap.remove();
+        style.remove();            // <-- remove print CSS so it can’t affect screen
+        btn.disabled = false; btn.classList.remove("pulsing");
+        window.removeEventListener("afterprint", cleanup);
+      };
+      window.addEventListener("afterprint", cleanup, { once: true });
+
+      try { window.print(); }
+      finally { setTimeout(cleanup, 1200); } // iOS/Safari fallback
+    });
+  }
+
+  // Wire each product
+  wirePrint("#dl-sliproot-pdf", { root: ".sliproot-card", title: "Sliproot_Insight" });
+  wirePrint("#dl-fathom-pdf",   { root: ".fathom-output-card", title: "Fathom_Insight" });
+  wirePrint("#dl-ad-pdf",       { root: ".markdown-plan, #markdown-plan", header: ".align-header", title: "AlignDaily_Plan" });
+  wirePrint("#dl-as-pdf",       { root: ".report-container", title: "Alignment_Guide" });
+})();
+</script>
