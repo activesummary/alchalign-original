@@ -194,24 +194,6 @@ if (!qty || Object.keys(qty).length === 0) {
 
 
       
-// Guidance guard (definitive): check metadata + price IDs
-const GUIDANCE_PRICES = new Set([
-  "price_ARCHIVED_REDACTED_11", // Guidance (email)
-  "price_ARCHIVED_REDACTED_12"  // Guidance (email+voice)
-]);
-
-const liList = Array.isArray(session?.line_items?.data) ? session.line_items.data : [];
-const liPriceIds = liList.map(li => li?.price?.id).filter(Boolean);
-
-const isGuidanceSession =
-  session?.metadata?.product_type === "guidance" ||
-  liPriceIds.some(id => GUIDANCE_PRICES.has(id));
-
-if (isGuidanceSession) {
-  $.export("skipped_guidance", { session_id: session.id, email, liPriceIds });
-  return { ok: true, skipped: "guidance" };
-}
-
 // If no tool SKUs resolved, don’t grant credits / email
 if (!qty || Object.keys(qty).length === 0) {
   $.export("skipped_no_tool_products", { session_id: session.id });
